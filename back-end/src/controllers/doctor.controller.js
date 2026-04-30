@@ -91,4 +91,18 @@ const getMyHospital = async (req, res, next) => {
   }
 };
 
-module.exports = { createProfile, getMyProfile, getDoctorById, updateProfile, getAllDoctors, getMyClients, uploadPhoto, deletePhoto, setHospital, getMyHospital };
+const getDoctorSlots = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { date } = req.query; // e.g. 2026-06-05
+    if (!date) {
+      return res.status(400).json({ success: false, message: 'Date is required' });
+    }
+    const slots = await doctorService.getDoctorSlots(id, date);
+    res.status(200).json({ success: true, data: slots });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { createProfile, getMyProfile, getDoctorById, updateProfile, getAllDoctors, getMyClients, uploadPhoto, deletePhoto, setHospital, getMyHospital, getDoctorSlots };

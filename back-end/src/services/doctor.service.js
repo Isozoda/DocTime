@@ -201,4 +201,48 @@ const getMyHospital = async (userId) => {
   return link?.hospital ?? null;
 };
 
-module.exports = { createProfile, getProfileByUserId, getDoctorById, updateProfile, getAllDoctors, getDoctorClients, uploadPhoto, deletePhoto, setHospital, getMyHospital };
+const getDoctorSlots = async (doctorId, date) => {
+  const doctor = await prisma.doctor.findUnique({
+    where: { id: doctorId },
+    select: { schedule: true },
+  });
+  if (!doctor) throw createError(404, 'Doctor not found');
+
+  const startOfDay = new Date(date);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      doctorId,
+      date: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+      status: { not: 'cancelled' },
+    },
+    select: { date: true },
+  });
+
+  const bookedTimes = appointments.map(apt => {
+    const d = new Date(apt.date);
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  });
+
+  // Default schedule: 09:00 to 18:00 every 30 mins
+  const slots = [];
+  for (let h = 9; h < 18; h++) {
+    for (const m of [0, 30]) {
+      const timeString = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      slots.push({
+        time: timeString,
+        available: !bookedTimes.includes(timeString),
+      });
+    }
+  }
+
+  return slots;
+};
+
+module.exports = { createProfile, getProfileByUserId, getDoctorById, updateProfile, getAllDoctors, getDoctorClients, uploadPhoto, deletePhoto, setHospital, getMyHospital, getDoctorSlots };
