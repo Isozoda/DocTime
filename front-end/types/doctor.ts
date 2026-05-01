@@ -18,6 +18,7 @@ export interface DoctorUser {
   name: string;
   email: string;
   phone?: string | null;
+  avatar?: string | null;
 }
 
 export interface Doctor {

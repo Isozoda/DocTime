@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/navigation";
 import type { Doctor } from "@/types/doctor";
 import { doctorPhotoUrl } from "@/lib/utils";
-import { MapPin, Clock, Star, Phone, CalendarDays, ArrowRight } from "lucide-react";
+import { MapPin, Clock, Star, Phone, CalendarDays, Wifi } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -39,107 +39,74 @@ export function DoctorCard({ doctor }: DoctorCardProps) {
   const color  = SPEC_COLORS[doctor.specialization] ?? "#6366F1";
   const specRu = SPEC_NAMES_RU[doctor.specialization] ?? doctor.specialization;
   const photo  = doctorPhotoUrl(doctor.user.name, doctor.photoUrl);
-  const rating = Math.round(doctor.rating);
 
   return (
-    <div className="group relative bg-card rounded-2xl border border-border overflow-hidden hover:shadow-2xl hover:shadow-black/10 hover:border-primary/25 hover:-translate-y-1.5 transition-all duration-300 flex flex-col">
-
-      {/* ── Gradient header ── */}
+    <div className="group relative bg-card rounded-2xl border border-border overflow-hidden hover:shadow-xl hover:shadow-black/8 hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+      {/* Top accent bar */}
       <div
-        className="relative h-28 shrink-0 flex items-end px-5 pb-3"
-        style={{
-          background: `linear-gradient(135deg, ${color}22 0%, ${color}42 100%)`,
-        }}
-      >
-        {/* Radial glow */}
-        <div
-          className="absolute inset-0 opacity-50 transition-opacity duration-300 group-hover:opacity-70"
-          style={{
-            background: `radial-gradient(ellipse at 20% 60%, ${color}60, transparent 55%)`,
-          }}
-        />
+        className="h-1 w-full shrink-0 transition-all duration-300 group-hover:h-1.5"
+        style={{ background: `linear-gradient(90deg, ${color}, ${color}88)` }}
+      />
 
-        {/* Online / offline badge */}
-        <div className="absolute top-3 right-3 z-10">
-          {doctor.schedule ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/80 backdrop-blur-sm border border-border/60 shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-glow" />
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Online</span>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Doctor photo */}
-        <div className="relative z-10 shrink-0">
-          <div
-            className="absolute inset-0 rounded-2xl blur-xl opacity-30 scale-110 transition-opacity duration-300 group-hover:opacity-50"
-            style={{ background: color }}
-          />
-          <Image
-            src={photo}
-            alt={doctor.user.name}
-            width={72}
-            height={72}
-            className="relative rounded-2xl object-cover shadow-xl"
-            style={{ outline: `2px solid ${color}40`, outlineOffset: "0px" }}
-          />
-        </div>
-
-        {/* Name + specialty (header row) */}
-        <div className="relative z-10 ms-3 flex-1 min-w-0 pb-0.5">
-          <h3 className="font-bold text-sm leading-snug truncate text-foreground">
-            {doctor.user.name}
-          </h3>
-          <span
-            className="inline-flex items-center mt-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full"
-            style={{
-              background: `${color}28`,
-              color,
-              border: `1px solid ${color}45`,
-            }}
-          >
-            {specRu}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Body ── */}
       <div className="p-5 flex flex-col flex-1">
-        {/* Rating */}
-        <div className="flex items-center gap-1.5 mb-4">
-          <div className="flex items-center gap-0.5">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <svg
-                key={s}
-                className={cn(
-                  "h-3.5 w-3.5 transition-colors",
-                  s <= rating ? "fill-amber-400 text-amber-400" : "fill-muted text-muted-foreground/25"
-                )}
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-            ))}
+        {/* Header */}
+        <div className="flex items-start gap-4">
+          <div className="relative shrink-0">
+            <div
+              className="absolute inset-0 rounded-2xl blur-xl opacity-20 group-hover:opacity-35 transition-opacity scale-110"
+              style={{ background: color }}
+            />
+            <Image
+              src={photo}
+              alt={doctor.user.name}
+              width={64}
+              height={64}
+              className="relative rounded-2xl object-cover ring-2 ring-border/50 group-hover:ring-primary/20 transition-all"
+            />
+            {doctor.schedule && (
+              <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-400 border-2 border-card shadow-sm" />
+            )}
           </div>
-          <span className="text-xs font-bold text-foreground">{doctor.rating.toFixed(1)}</span>
-          <span className="text-xs text-muted-foreground">/ 5.0</span>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-base leading-snug truncate">{doctor.user.name}</h3>
+            <span
+              className="inline-flex items-center mt-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full"
+              style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}
+            >
+              {specRu}
+            </span>
+
+            {/* Stars + rating */}
+            <div className="flex items-center gap-1.5 mt-2">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+              <span className="text-xs font-bold text-foreground">{doctor.rating.toFixed(1)}</span>
+              <span className="text-xs text-muted-foreground">/ 5.0</span>
+            </div>
+          </div>
         </div>
 
-        {/* Info chips */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-xl px-2.5 py-2 border border-border/40">
-            <MapPin className="h-3.5 w-3.5 text-primary/60 shrink-0" />
-            <span className="truncate">{doctor.city}</span>
+        {/* Info rows */}
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+            <span>{doctor.city}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-xl px-2.5 py-2 border border-border/40">
-            <Clock className="h-3.5 w-3.5 text-primary/60 shrink-0" />
-            <span className="truncate">{doctor.experience} {t("experience")}</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+            <span>{doctor.experience} {t("experience")}</span>
           </div>
+          {doctor.schedule && (
+            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              <Wifi className="h-3.5 w-3.5 shrink-0" />
+              <span>{t("onlineConsult")}</span>
+            </div>
+          )}
         </div>
 
         {/* Bio */}
         {doctor.bio && (
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1">
+          <p className="mt-3 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {doctor.bio}
           </p>
         )}
@@ -177,17 +144,14 @@ export function DoctorCard({ doctor }: DoctorCardProps) {
           <Link
             href={`/doctors/${doctor.id}`}
             className={cn(
-              "group/btn flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold",
+              "flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold",
               "bg-primary/8 text-primary border border-primary/20",
-              "hover:bg-primary hover:text-primary-foreground hover:border-primary",
-              "hover:shadow-lg hover:shadow-primary/25",
-              "focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:outline-none",
+              "hover:bg-primary hover:text-primary-foreground hover:border-primary hover:shadow-md hover:shadow-primary/25",
               "transition-all duration-200"
             )}
           >
-            <CalendarDays className="h-4 w-4" />
+            <CalendarDays className="h-3.5 w-3.5" />
             {t("bookBtn")}
-            <ArrowRight className="h-3.5 w-3.5 opacity-0 -ms-1 group-hover/btn:opacity-100 group-hover/btn:ms-0 transition-all duration-200" />
           </Link>
         </div>
       </div>

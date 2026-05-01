@@ -17,7 +17,7 @@ const doctorSelect = {
   createdAt: true,
   updatedAt: true,
   user: {
-    select: { id: true, name: true, email: true, phone: true },
+    select: { id: true, name: true, email: true, phone: true, avatar: true },
   },
 };
 
@@ -30,6 +30,14 @@ const prepareData = (data) => {
   return out;
 };
 
+const formatDoctor = (doctor) => {
+  if (!doctor) return null;
+  return {
+    ...doctor,
+    photoUrl: doctor.photoUrl || doctor.user?.avatar || null
+  };
+};
+
 const createProfile = async (userId, data) => {
   const exists = await prisma.doctor.findUnique({ where: { userId } });
   if (exists) throw createError(409, 'Doctor profile already exists');
@@ -39,10 +47,11 @@ const createProfile = async (userId, data) => {
     throw createError(403, 'Only users with the doctor role can create a doctor profile');
   }
 
-  return prisma.doctor.create({
+  const doctor = await prisma.doctor.create({
     data: { userId, ...prepareData(data) },
     select: doctorSelect,
   });
+  return formatDoctor(doctor);
 };
 
 const getProfileByUserId = async (userId) => {
@@ -51,7 +60,7 @@ const getProfileByUserId = async (userId) => {
     select: doctorSelect,
   });
   if (!doctor) throw createError(404, 'Doctor profile not found');
-  return doctor;
+  return formatDoctor(doctor);
 };
 
 const getDoctorById = async (doctorId) => {
@@ -60,18 +69,19 @@ const getDoctorById = async (doctorId) => {
     select: doctorSelect,
   });
   if (!doctor) throw createError(404, 'Doctor not found');
-  return doctor;
+  return formatDoctor(doctor);
 };
 
 const updateProfile = async (userId, data) => {
   const doctor = await prisma.doctor.findUnique({ where: { userId } });
   if (!doctor) throw createError(404, 'Doctor profile not found');
 
-  return prisma.doctor.update({
+  const updated = await prisma.doctor.update({
     where: { userId },
     data: prepareData(data),
     select: doctorSelect,
   });
+  return formatDoctor(updated);
 };
 
 const getDoctorClients = async (userId) => {
@@ -126,8 +136,10 @@ const getAllDoctors = async ({ specialization, city, rating, page = 1, limit = 1
     prisma.doctor.count({ where }),
   ]);
 
+  const mapped = doctors.map(formatDoctor);
+
   return {
-    doctors,
+    doctors: mapped,
     pagination: {
       total,
       page: Number(page),
@@ -147,11 +159,16 @@ const uploadPhoto = async (userId, filename) => {
   }
 
   const photoUrl = `/uploads/doctors/${filename}`;
-  return prisma.doctor.update({
+  await prisma.user.update({
+    where: { id: userId },
+    data: { avatar: photoUrl },
+  });
+  const updated = await prisma.doctor.update({
     where: { userId },
     data: { photoUrl },
     select: doctorSelect,
   });
+  return formatDoctor(updated);
 };
 
 const deletePhoto = async (userId) => {
@@ -163,11 +180,16 @@ const deletePhoto = async (userId) => {
     fs.unlink(filePath, () => {});
   }
 
-  return prisma.doctor.update({
+  await prisma.user.update({
+    where: { id: userId },
+    data: { avatar: null },
+  });
+  const updated = await prisma.doctor.update({
     where: { userId },
     data: { photoUrl: null },
     select: doctorSelect,
   });
+  return formatDoctor(updated);
 };
 
 /** Link a doctor to a hospital (upsert — replaces any previous single hospital link) */
@@ -201,48 +223,8 @@ const getMyHospital = async (userId) => {
   return link?.hospital ?? null;
 };
 
-const getDoctorSlots = async (doctorId, date) => {
-  const doctor = await prisma.doctor.findUnique({
-    where: { id: doctorId },
-    select: { schedule: true },
-  });
-  if (!doctor) throw createError(404, 'Doctor not found');
-
-  const startOfDay = new Date(date);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  const endOfDay = new Date(date);
-  endOfDay.setUTCHours(23, 59, 59, 999);
-
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      doctorId,
-      date: {
-        gte: startOfDay,
-        lte: endOfDay,
-      },
-      status: { not: 'cancelled' },
-    },
-    select: { date: true },
-  });
-
-  const bookedTimes = appointments.map(apt => {
-    const d = new Date(apt.date);
-    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
-  });
-
-  // Default schedule: 09:00 to 18:00 every 30 mins
-  const slots = [];
-  for (let h = 9; h < 18; h++) {
-    for (const m of [0, 30]) {
-      const timeString = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      slots.push({
-        time: timeString,
-        available: !bookedTimes.includes(timeString),
-      });
-    }
-  }
-
-  return slots;
+module.exports = { 
+  createProfile, getProfileByUserId, getDoctorById, updateProfile, 
+  getAllDoctors, getDoctorClients, uploadPhoto, deletePhoto, 
+  setHospital, getMyHospital, formatDoctor 
 };
-
-module.exports = { createProfile, getProfileByUserId, getDoctorById, updateProfile, getAllDoctors, getDoctorClients, uploadPhoto, deletePhoto, setHospital, getMyHospital, getDoctorSlots };

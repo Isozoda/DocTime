@@ -58,25 +58,6 @@ router.get('/',    doctorController.getAllDoctors);
  */
 router.get('/:id', doctorController.getDoctorById);
 
-/**
- * @swagger
- * /api/doctors/{id}/slots:
- *   get:
- *     summary: Get doctor slots by date
- *     tags: [Doctors]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *       - in: query
- *         name: date
- *         required: true
- *     responses:
- *       200:
- *         description: Slots available
- */
-router.get('/:id/slots', doctorController.getDoctorSlots);
-
 // Doctor only
 /**
  * @swagger

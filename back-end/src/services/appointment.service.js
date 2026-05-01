@@ -1,5 +1,14 @@
 const prisma = require('../config/prisma');
 const { createError } = require('../middlewares/error.middleware');
+const { formatDoctor } = require('./doctor.service');
+
+const formatAppointment = (apt) => {
+  if (!apt || !apt.doctor) return apt;
+  return {
+    ...apt,
+    doctor: formatDoctor(apt.doctor)
+  };
+};
 
 const appointmentSelect = {
   id: true,
@@ -17,7 +26,7 @@ const appointmentSelect = {
       specialization: true,
       city: true,
       photoUrl: true,
-      user: { select: { id: true, name: true, email: true, phone: true } },
+      user: { select: { id: true, name: true, email: true, phone: true, avatar: true } },
     },
   },
 };
@@ -35,7 +44,7 @@ const bookAppointment = async (patientId, { doctorId, date, notes }) => {
   });
   if (conflict) throw createError(409, 'Doctor already has an appointment at this time');
 
-  return prisma.appointment.create({
+  const apt = await prisma.appointment.create({
     data: {
       patientId,
       doctorId,
@@ -45,25 +54,28 @@ const bookAppointment = async (patientId, { doctorId, date, notes }) => {
     },
     select: appointmentSelect,
   });
+  return formatAppointment(apt);
 };
 
 const getPatientAppointments = async (patientId) => {
-  return prisma.appointment.findMany({
+  const apts = await prisma.appointment.findMany({
     where: { patientId },
     select: appointmentSelect,
     orderBy: { date: 'desc' },
   });
+  return apts.map(formatAppointment);
 };
 
 const getDoctorAppointments = async (userId) => {
   const doctor = await prisma.doctor.findUnique({ where: { userId } });
   if (!doctor) throw createError(404, 'Doctor profile not found');
 
-  return prisma.appointment.findMany({
+  const apts = await prisma.appointment.findMany({
     where: { doctorId: doctor.id },
     select: appointmentSelect,
     orderBy: { date: 'asc' },
   });
+  return apts.map(formatAppointment);
 };
 
 const getAppointmentById = async (appointmentId, userId, role) => {
@@ -82,7 +94,7 @@ const getAppointmentById = async (appointmentId, userId, role) => {
     throw createError(403, 'Not authorized to view this appointment');
   }
 
-  return appointment;
+  return formatAppointment(appointment);
 };
 
 const cancelAppointment = async (appointmentId, userId, role) => {
@@ -103,11 +115,12 @@ const cancelAppointment = async (appointmentId, userId, role) => {
     throw createError(403, 'Not authorized to cancel this appointment');
   }
 
-  return prisma.appointment.update({
+  const updated = await prisma.appointment.update({
     where: { id: appointmentId },
     data: { status: 'cancelled' },
     select: appointmentSelect,
   });
+  return formatAppointment(updated);
 };
 
 const confirmAppointment = async (appointmentId, userId) => {
@@ -123,11 +136,12 @@ const confirmAppointment = async (appointmentId, userId) => {
     throw createError(400, `Cannot confirm an appointment with status '${appointment.status}'`);
   }
 
-  return prisma.appointment.update({
+  const updated = await prisma.appointment.update({
     where: { id: appointmentId },
     data: { status: 'confirmed' },
     select: appointmentSelect,
   });
+  return formatAppointment(updated);
 };
 
 module.exports = {

@@ -15,14 +15,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   BarChart3, CalendarDays, Star, Loader2,
   Construction, Camera, Trash2, ArrowRight,
+  Users, Phone, Mail, CheckCircle2, XCircle, AlertCircle, Search,
+  Building2, MapPin,
 } from "lucide-react";
 import api from "@/lib/axios";
 import { toast } from "sonner";
-import { doctorPhotoUrl } from "@/lib/utils";
+import { doctorPhotoUrl, avatarUrl } from "@/lib/utils";
 import type { Doctor, WeekSchedule } from "@/types/doctor";
 import type { User } from "@/types/user";
+
+interface Patient {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  createdAt: string;
+  lastVisit: string;
+  lastStatus: string;
+}
 
 interface HospitalOption { id: string; name: string; city: string; address: string; }
 
@@ -88,6 +107,25 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
+/* ── Status badge helper ────────────────────────────────────────── */
+function StatusBadge({ status }: { status: string }) {
+  if (status === "confirmed") return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+      <CheckCircle2 className="h-3 w-3" /> Confirmed
+    </span>
+  );
+  if (status === "cancelled") return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+      <XCircle className="h-3 w-3" /> Cancelled
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+      <AlertCircle className="h-3 w-3" /> Pending
+    </span>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════ */
 export default function DoctorDashboardPage() {
   const t = useTranslations("dashboard");
@@ -118,6 +156,11 @@ export default function DoctorDashboardPage() {
   const [photoKey,       setPhotoKey]       = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /* clients / patients */
+  const [clients,        setClients]        = useState<Patient[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [clientSearch,   setClientSearch]   = useState("");
+
   useEffect(() => {
     if (tab === "schedule" || tab === "settings") {
       setDocLoading(true);
@@ -125,7 +168,7 @@ export default function DoctorDashboardPage() {
         api.get<{ success: boolean; data: Doctor }>("/doctors/me/profile"),
         api.get<{ success: boolean; data: User }>("/users/profile"),
         api.get<{ success: boolean; data: HospitalOption | null }>("/doctors/me/hospital"),
-        api.get<{ success: boolean; data: { hospitals: HospitalOption[] } }>("/hospitals"),
+        api.get<{ success: boolean; data: HospitalOption[] }>("/hospitals"),
       ])
         .then(([docRes, userRes, hospRes, allHospRes]) => {
           const d = docRes.data.data;
@@ -139,10 +182,17 @@ export default function DoctorDashboardPage() {
           setInstagram(d.instagram ?? "");
           setBio(d.bio ?? "");
           setHospitalId(hospRes.data.data?.id ?? "");
-          setHospitals(allHospRes.data.data.hospitals ?? []);
+          setHospitals(allHospRes.data.data ?? []);
         })
         .catch(() => {})
         .finally(() => setDocLoading(false));
+    }
+    if (tab === "clients" || tab === "settings") {
+      setClientsLoading(true);
+      api.get<{ success: boolean; data: Patient[] }>("/doctors/me/clients")
+        .then((res) => setClients(res.data.data ?? []))
+        .catch(() => {})
+        .finally(() => setClientsLoading(false));
     }
   }, [tab]);
 
@@ -476,21 +526,30 @@ export default function DoctorDashboardPage() {
 
                   {/* Hospital */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Building2 className="h-3 w-3" />
                       My Hospital / Clinic
                     </Label>
-                    <select
-                      value={hospitalId}
-                      onChange={(e) => setHospitalId(e.target.value)}
-                      className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="">— Not linked to a hospital —</option>
-                      {hospitals.map((h) => (
-                        <option key={h.id} value={h.id}>
-                          {h.name} · {h.city}
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={hospitalId || "none"} onValueChange={(val) => setHospitalId(val === "none" ? "" : val)}>
+                      <SelectTrigger className="h-11 rounded-xl bg-background border-border/60 hover:border-primary/40 transition-colors focus:ring-primary/20">
+                        <SelectValue placeholder="Select a hospital or clinic" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border/60 shadow-xl">
+                        <SelectItem value="none" className="rounded-lg">
+                          <span className="text-muted-foreground italic">— Not linked to a hospital —</span>
+                        </SelectItem>
+                        {hospitals.map((h) => (
+                          <SelectItem key={h.id} value={h.id} className="rounded-lg py-2">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{h.name}</span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <MapPin className="h-2.5 w-2.5" /> {h.city} · {h.address}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <Button
@@ -505,10 +564,163 @@ export default function DoctorDashboardPage() {
                 </div>
               )}
             </div>
+
+          {/* ── Patients List (below profile form) ──────────────── */}
+          <div className="bg-card rounded-2xl border border-border/60 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground text-sm">My Patients</h3>
+                  <p className="text-xs text-muted-foreground">{clients.length} registered</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setTab("clients")}
+                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline underline-offset-2"
+              >
+                View all <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+
+            {clientsLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 rounded-xl" />
+                ))}
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center rounded-xl border border-dashed border-border">
+                <Users className="h-8 w-8 text-muted-foreground opacity-30 mb-2" />
+                <p className="text-xs text-muted-foreground">No patients yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {clients.slice(0, 5).map((patient) => (
+                  <div
+                    key={patient.id}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarImage src={avatarUrl(patient.name)} alt={patient.name} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                        {patient.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{patient.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{patient.email}</p>
+                    </div>
+                    <div className="shrink-0">
+                      <StatusBadge status={patient.lastStatus} />
+                    </div>
+                  </div>
+                ))}
+                {clients.length > 5 && (
+                  <button
+                    onClick={() => setTab("clients")}
+                    className="w-full py-2 text-xs text-primary font-medium text-center hover:underline underline-offset-2"
+                  >
+                    +{clients.length - 5} more patients
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+      /* ── Clients / Patients ───────────────────────────────────── */
+      case "clients": {
+        const filtered = clients.filter((c) =>
+          c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+          c.email.toLowerCase().includes(clientSearch.toLowerCase())
+        );
+        return (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  {t("clients")}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {clients.length} {clients.length === 1 ? "patient" : "patients"} total
+                </p>
+              </div>
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  placeholder="Search patients…"
+                  className="pl-9 pr-4 py-2 h-10 rounded-xl border border-input bg-background text-sm w-52 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            {clientsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 rounded-2xl" />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-dashed border-border bg-muted/20">
+                <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
+                  <Users className="h-7 w-7 text-muted-foreground opacity-50" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {clientSearch ? "No patients match your search" : "No patients yet"}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filtered.map((patient) => (
+                  <div
+                    key={patient.id}
+                    className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border/60 hover:border-primary/30 hover:shadow-sm transition-all duration-200 group"
+                  >
+                    <Avatar className="h-11 w-11 shrink-0 ring-2 ring-border group-hover:ring-primary/30 transition-all">
+                      <AvatarImage src={avatarUrl(patient.name)} alt={patient.name} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                        {patient.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground truncate">{patient.name}</p>
+                        <StatusBadge status={patient.lastStatus} />
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Mail className="h-3 w-3" />{patient.email}
+                        </span>
+                        {patient.phone && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Phone className="h-3 w-3" />{patient.phone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right hidden sm:block">
+                      <p className="text-xs text-muted-foreground">Last visit</p>
+                      <p className="text-xs font-medium text-foreground mt-0.5">
+                        {new Date(patient.lastVisit).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
+      }
 
-      case "clients":  return <ComingSoon label={t("clients")} />;
       case "services": return <ComingSoon label={t("services")} />;
       case "reviews":  return <ComingSoon label={t("reviews")} />;
       case "feedback": return <ComingSoon label={t("feedback")} />;
