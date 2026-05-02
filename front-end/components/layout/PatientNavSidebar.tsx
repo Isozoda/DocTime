@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Link, usePathname } from "@/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "@/navigation";
-import { cn } from "@/lib/utils";
+import { cn, avatarUrl } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarDays, FileText,
   Settings, LogOut, Stethoscope, Menu, X, Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const NAV = [
   { href: "/patient/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -70,6 +70,7 @@ export function PatientNavSidebar() {
         {user && (
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
             <Avatar className="h-8 w-8 shrink-0 ring-2 ring-white/15">
+              <AvatarImage src={avatarUrl(user.name, (user as { avatar?: string | null }).avatar)} alt={user.name} />
               <AvatarFallback className="bg-primary text-white text-xs font-bold">{user.name[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">

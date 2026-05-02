@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "@/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import { cn, avatarUrl } from "@/lib/utils";
 import api from "@/lib/axios";
 import { toast } from "sonner";
 import {
   User, ShieldCheck, Bell, CreditCard, ShieldAlert,
   Stethoscope, FlaskConical, Pill, Megaphone,
   CreditCard as VisaIcon, Wallet, Plus, CheckCircle,
+  Camera, Loader2, Trash2,
 } from "lucide-react";
 
 type SettingsTab = "personal" | "security" | "notifications" | "payments";
@@ -50,6 +51,46 @@ export default function SettingsPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoDeleting, setPhotoDeleting] = useState(false);
+  const [photoKey, setPhotoKey] = useState(0);
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append("avatar", file);
+    setPhotoUploading(true);
+    try {
+      const { data } = await api.post<{ success: boolean; data: typeof user }>("/users/profile/avatar", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (data.data) updateUser(data.data as Parameters<typeof updateUser>[0]);
+      setPhotoKey((k) => k + 1);
+      toast.success("Avatar updated");
+    } catch {
+      // toast handles error
+    } finally {
+      setPhotoUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    setPhotoDeleting(true);
+    try {
+      const { data } = await api.delete<{ success: boolean; data: typeof user }>("/users/profile/avatar");
+      if (data.data) updateUser(data.data as Parameters<typeof updateUser>[0]);
+      setPhotoKey((k) => k + 1);
+      toast.success("Avatar removed");
+    } catch {
+      // toast
+    } finally {
+      setPhotoDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) router.push("/login");
@@ -97,12 +138,44 @@ export default function SettingsPage() {
           {/* Profile card */}
           <div className="glass-card rounded-2xl p-5">
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">
-                {user.name[0]}
+              <div className="relative group shrink-0">
+                <div className="h-14 w-14 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center border-2 border-primary/20">
+                  <img
+                    key={photoKey}
+                    src={avatarUrl(user.name, (user as { avatar?: string | null }).avatar)}
+                    alt={user.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={photoUploading}
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Upload photo"
+                >
+                  {photoUploading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
               </div>
-              <div>
-                <p className="font-semibold text-white">{user.name}</p>
-                <p className="text-muted-foreground text-xs capitalize">Patient ID: #DT-9942</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-white truncate">{user.name}</p>
+                <p className="text-muted-foreground text-xs capitalize truncate">Patient ID: #DT-9942</p>
+                {(user as { avatar?: string | null }).avatar && (
+                  <button
+                    onClick={handleDeletePhoto}
+                    disabled={photoDeleting}
+                    className="text-[10px] text-destructive hover:underline mt-1 flex items-center gap-1"
+                  >
+                    {photoDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    Remove photo
+                  </button>
+                )}
               </div>
             </div>
 

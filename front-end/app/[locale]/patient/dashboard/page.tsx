@@ -60,13 +60,15 @@ const SPECIALTIES = [
 ];
 
 export default function PatientDashboardPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const router = useRouter();
   const { appointments, isLoading } = usePatientAppointments();
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== "patient") router.push("/login");
-  }, [isAuthenticated, user, router]);
+    if (isHydrated && (!isAuthenticated || user?.role !== "patient")) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isHydrated, user, router]);
 
   if (!user) return null;
 

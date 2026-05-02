@@ -14,22 +14,13 @@ interface DoctorGridProps {
 
 function DoctorSkeleton() {
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden">
-      <div className="h-1 w-full bg-muted" />
-      <div className="p-5 space-y-4">
-        <div className="flex items-start gap-4">
-          <Skeleton className="h-16 w-16 rounded-2xl shrink-0" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-3/4 rounded-lg" />
-            <Skeleton className="h-5 w-24 rounded-full" />
-            <Skeleton className="h-3 w-20 rounded-lg" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-3 w-2/3 rounded-lg" />
-          <Skeleton className="h-3 w-1/2 rounded-lg" />
-        </div>
-        <Skeleton className="h-10 w-full rounded-xl" />
+    <div className="rounded-[24px] overflow-hidden glass-card p-0 border-border/40">
+      <div className="h-48 w-full bg-muted/20 skeleton-shimmer" />
+      <div className="p-6 space-y-4">
+        <div className="h-5 w-3/4 rounded-lg bg-muted/30 skeleton-shimmer" />
+        <div className="h-3.5 w-1/2 rounded-lg bg-muted/20 skeleton-shimmer" />
+        <div className="h-3.5 w-2/3 rounded-lg bg-muted/20 skeleton-shimmer" />
+        <div className="h-11 w-full rounded-xl bg-muted/30 skeleton-shimmer" />
       </div>
     </div>
   );
@@ -50,12 +41,12 @@ export function DoctorGrid({ doctors, isLoading, skeletonCount = 6 }: DoctorGrid
 
   if (!doctors.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
-        <div className="w-16 h-16 rounded-2xl bg-primary/8 border border-primary/15 flex items-center justify-center mb-5">
-          <SearchX className="h-7 w-7 text-primary/60" />
+      <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-up rounded-[32px] bg-card/50 border border-border/50 backdrop-blur-xl">
+        <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 bg-primary/10 border border-primary/20 shadow-lg shadow-primary/5">
+          <SearchX className="h-9 w-9 text-primary" />
         </div>
-        <h3 className="text-lg font-semibold mb-1">{t("noResults")}</h3>
-        <p className="text-sm text-muted-foreground max-w-xs">{t("noResultsHint")}</p>
+        <h3 className="text-xl font-bold text-foreground mb-2">{t("noResults")}</h3>
+        <p className="text-sm text-muted-foreground max-w-xs px-6">{t("noResultsHint")}</p>
       </div>
     );
   }

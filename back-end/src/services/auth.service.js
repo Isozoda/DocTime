@@ -36,6 +36,7 @@ const verifyOtp = async ({ phone, otp }) => {
 };
 
 const register = async ({ name, email, password, role, phone, specialization }) => {
+  /*
   // Check phone OTP was verified
   if (phone) {
     const otpRecord = await prisma.otpRequest.findUnique({ where: { phone } });
@@ -43,6 +44,7 @@ const register = async ({ name, email, password, role, phone, specialization }) 
       throw createError(400, 'Phone number not verified. Please verify your phone first.');
     }
   }
+  */
 
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) throw createError(409, 'Email already in use');

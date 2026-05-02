@@ -30,13 +30,15 @@ function isSameDay(dateStr: string, reference: Date) {
 }
 
 export default function DoctorDashboardPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const router = useRouter();
   const { appointments, isLoading } = useDoctorAppointments();
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== "doctor") router.push("/login");
-  }, [isAuthenticated, user, router]);
+    if (isHydrated && (!isAuthenticated || user?.role !== "doctor")) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isHydrated, user, router]);
 
   if (!user) return null;
 

@@ -48,9 +48,8 @@ const PATIENT_ITEMS: SidebarItem[] = [
 ];
 
 function resolvePhoto(role: "patient" | "doctor", name: string, photoUrl?: string | null): string {
-  if (photoUrl && photoUrl.startsWith("/uploads/")) return `${BACKEND}${photoUrl}`;
   if (role === "doctor") return doctorPhotoUrl(name, photoUrl);
-  return avatarUrl(name);
+  return avatarUrl(name, photoUrl);
 }
 
 export function DashboardSidebar({ role, activeTab, onTabChange, doctorPhotoUrl }: DashboardSidebarProps) {

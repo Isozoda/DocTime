@@ -22,7 +22,9 @@ export function formatTime(dateStr: string): string {
   return formatDate(dateStr, "HH:mm");
 }
 
-export function avatarUrl(name: string): string {
+export function avatarUrl(name: string, avatar?: string | null): string {
+  if (avatar?.startsWith("/uploads/")) return `${BACKEND_URL}${avatar}`;
+  if (avatar) return avatar;
   const encoded = encodeURIComponent(name);
   return `https://ui-avatars.com/api/?name=${encoded}&background=0D9488&color=fff&size=128`;
 }

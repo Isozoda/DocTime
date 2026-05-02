@@ -93,7 +93,7 @@ const getDoctorClients = async (userId) => {
     where: { doctorId: doctor.id },
     select: {
       patient: {
-        select: { id: true, name: true, email: true, phone: true, createdAt: true },
+        select: { id: true, name: true, email: true, phone: true, avatar: true, createdAt: true },
       },
       createdAt: true,
       status: true,

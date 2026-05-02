@@ -31,7 +31,7 @@ export function AppointmentCard({
   const name = isDoctor ? appointment.patient.name : appointment.doctor.user.name;
   const sub  = isDoctor ? (appointment.patient.phone ?? "") : appointment.doctor.specialization;
   const photo = isDoctor
-    ? avatarUrl(name)
+    ? avatarUrl(name, appointment.patient.avatar)
     : doctorPhotoUrl(appointment.doctor.user.name, appointment.doctor.photoUrl);
 
   const canAct = appointment.status !== "cancelled";

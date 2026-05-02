@@ -42,8 +42,8 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
-        <div className="relative min-h-screen">
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true} disableTransitionOnChange={false}>
+        <div className="relative min-h-screen noise-overlay">
           <div className="fixed inset-0 mesh-bg pointer-events-none" aria-hidden />
           <div className="relative z-10">
             <AuthHydrate />

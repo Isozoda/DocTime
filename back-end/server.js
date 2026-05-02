@@ -9,6 +9,7 @@ const doctorRoutes           = require('./src/routes/doctor.routes');
 const appointmentRoutes      = require('./src/routes/appointment.routes');
 const specializationRoutes   = require('./src/routes/specialization.routes');
 const hospitalRoutes         = require('./src/routes/hospital.routes');
+const publicRoutes           = require('./src/routes/public.routes');
 const { errorHandler }  = require('./src/middlewares/error.middleware');
 const { swaggerUi, specs } = require('./src/config/swagger');
 
@@ -35,6 +36,7 @@ app.use('/api/doctors',         doctorRoutes);
 app.use('/api/appointments',    appointmentRoutes);
 app.use('/api/specializations', specializationRoutes);
 app.use('/api/hospitals',       hospitalRoutes);
+app.use('/api/public',          publicRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 

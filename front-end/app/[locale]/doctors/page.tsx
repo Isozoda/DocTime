@@ -43,23 +43,26 @@ export default function DoctorsPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen relative overflow-hidden">
       <Header />
+
+      {/* Ambient background orbs */}
+      <div className="absolute top-20 -left-40 w-96 h-96 bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-40 -right-40 w-96 h-96 bg-secondary/5 blur-[120px] rounded-full pointer-events-none" />
 
       <main className="flex-1 container mx-auto px-4 py-10 max-w-6xl">
         {/* Page header */}
-        <div className="flex items-end justify-between mb-8 animate-fade-up">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 animate-fade-up">
           <div>
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Stethoscope className="h-4.5 w-4.5 text-primary" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
+                <Stethoscope className="h-5.5 w-5.5 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">{t("title")}</h1>
             </div>
             {pagination && (
-              <p className="text-muted-foreground text-sm">
-                <span className="font-semibold text-foreground">{pagination.total}</span>{" "}
-                {pagination.total === 1 ? "doctor" : "doctors"} available
+              <p className="text-muted-foreground text-sm font-medium">
+                Found <span className="text-primary font-bold">{pagination.total}</span> verified specialists
               </p>
             )}
           </div>
@@ -75,8 +78,8 @@ export default function DoctorsPage() {
 
         <div className="flex gap-6 lg:gap-8">
           {/* Desktop filter sidebar */}
-          <aside className="hidden md:block w-64 shrink-0">
-            <div className="sticky top-24 bg-card rounded-2xl border border-border p-6 shadow-sm">
+          <aside className="hidden md:block w-72 shrink-0">
+            <div className="sticky top-24 glass-card p-7 shadow-2xl shadow-black/5">
               <DoctorFilter filters={filters} onChange={setFilters} onReset={resetFilters} />
             </div>
           </aside>
@@ -90,7 +93,7 @@ export default function DoctorsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 rounded-xl border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                  className="h-10 px-4 gap-1.5 rounded-xl border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-sm font-semibold"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                 >
@@ -106,10 +109,10 @@ export default function DoctorsPage() {
                         key={p}
                         onClick={() => setPage(p)}
                         className={cn(
-                          "h-9 w-9 rounded-xl text-sm font-medium transition-all duration-200",
+                          "h-10 w-10 rounded-xl text-sm font-bold transition-all duration-300",
                           p === page
-                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                            : "border border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary"
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-110 z-10"
+                            : "border border-border/60 bg-card/50 text-muted-foreground hover:border-primary/40 hover:text-primary hover:scale-105"
                         )}
                       >
                         {p}
@@ -121,7 +124,7 @@ export default function DoctorsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 rounded-xl border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                  className="h-10 px-4 gap-1.5 rounded-xl border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-sm font-semibold"
                   disabled={page >= pagination.pages}
                   onClick={() => setPage((p) => p + 1)}
                 >

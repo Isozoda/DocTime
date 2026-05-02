@@ -7,7 +7,7 @@ import { useRouter } from "@/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarDays, Clock, TrendingUp,
-  ShieldCheck, Settings, LogOut, Stethoscope, Menu, X, Home,
+  ShieldCheck, Settings, LogOut, Stethoscope, Menu, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -73,12 +73,7 @@ export function DoctorNavSidebar() {
           </div>
           Settings
         </Link>
-        <Link href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-white/6 transition-colors">
-          <div className="h-7 w-7 rounded-lg flex items-center justify-center">
-            <Home className="h-4 w-4 opacity-50" />
-          </div>
-          Home
-        </Link>
+
         {user && (
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
             <Avatar className="h-8 w-8 shrink-0 ring-2 ring-white/15">

@@ -50,7 +50,7 @@ export function BookingSuccess() {
 
       <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
         <Link
-          href="/dashboard/patient"
+          href="/patient/dashboard"
           className={cn(
             "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold",
             "bg-primary text-primary-foreground shadow-md shadow-primary/25",

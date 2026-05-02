@@ -5,17 +5,13 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter, usePathname } from "@/navigation";
 import { useAuthStore } from "@/store/authStore";
 import {
-  Stethoscope, Menu, X, LogOut, LayoutDashboard, User as UserIcon,
+  Activity, Menu, X, LogOut, LayoutDashboard, User as UserIcon, Map,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { avatarUrl } from "@/lib/utils";
@@ -24,8 +20,7 @@ import { cn } from "@/lib/utils";
 const BACKEND = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ?? "http://localhost:5000";
 
 function resolveAvatar(user: { name: string; avatar?: string | null }): string {
-  if (user.avatar) return `${BACKEND}${user.avatar}`;
-  return avatarUrl(user.name);
+  return avatarUrl(user.name, user.avatar);
 }
 
 export function Header() {
@@ -37,7 +32,7 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -50,6 +45,7 @@ export function Header() {
   const navLinks = [
     { href: "/doctors", label: t("doctors") },
     { href: "/hospitals", label: t("hospitals") },
+    { href: "/map", label: t("map") },
     { href: "/about", label: t("about") },
   ];
 
@@ -58,20 +54,27 @@ export function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full transition-all duration-300",
+        "sticky top-0 z-50 w-full transition-all duration-500",
         scrolled
-          ? "border-b border-border/50 bg-background/90 backdrop-blur-2xl shadow-sm shadow-black/5"
-          : "border-b border-transparent bg-background/60 backdrop-blur-md"
+          ? "border-b border-border/40 bg-background/80 backdrop-blur-2xl shadow-lg shadow-black/5 dark:shadow-black/30"
+          : "border-b border-transparent bg-transparent"
       )}
     >
       <div className="container mx-auto px-4 flex h-16 items-center justify-between gap-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 font-bold text-lg shrink-0 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary shadow-md shadow-primary/25 transition-all duration-200 group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-primary/30">
-            <Stethoscope className="h-4 w-4 text-white" />
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105"
+            style={{
+              background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
+              boxShadow: "0 0 20px rgba(99,102,241,0.4)",
+            }}
+          >
+            <Activity className="h-4.5 w-4.5 text-white" />
           </div>
-          <span className="gradient-text">EasyDoc</span>
-          <span className="text-muted-foreground font-normal text-sm">TJ</span>
+          <span className="font-black text-lg tracking-tight text-foreground">
+            Doc<span className="text-primary">Time</span>
+          </span>
         </Link>
 
         {/* Desktop Nav */}
@@ -83,8 +86,8 @@ export function Header() {
               className={cn(
                 "px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200",
                 isActive(link.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               )}
             >
               {link.label}
@@ -92,47 +95,53 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-1.5">
-          <LanguageSwitcher />
+        {/* Right side */}
+        <div className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle />
+          <LanguageSwitcher />
 
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full ring-2 ring-border/60 hover:ring-primary/40 transition-all duration-200"
+                <button
+                  className="rounded-full p-0.5 transition-all duration-200 hover:ring-2 ring-primary/40 border border-border"
                 >
-                  <Avatar className="h-7 w-7">
+                  <Avatar className="h-8 w-8">
                     <AvatarImage src={resolveAvatar(user)} alt={user.name} />
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+                    <AvatarFallback
+                      className="text-xs font-bold"
+                      style={{ background: "linear-gradient(135deg, #6366F1, #8B5CF6)", color: "white" }}
+                    >
                       {user.name[0]}
                     </AvatarFallback>
                   </Avatar>
-                </Button>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border/50 shadow-2xl shadow-black/10 p-1.5 backdrop-blur-xl">
-                <div className="px-3 py-2.5 bg-primary/5 rounded-xl mb-1 border border-primary/10">
-                  <p className="text-sm font-semibold truncate">{user.name}</p>
+              <DropdownMenuContent
+                align="end"
+                className="w-52 p-1.5 rounded-2xl glass-card border-border shadow-xl"
+              >
+                <div
+                  className="px-3 py-2.5 rounded-xl mb-1 bg-primary/5 border border-primary/10"
+                >
+                  <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
-                <DropdownMenuItem asChild className="gap-2 rounded-xl">
+                <DropdownMenuItem asChild className="gap-2 rounded-xl text-muted-foreground hover:text-foreground focus:text-foreground">
                   <Link
-                    href={user.role === "doctor" ? "/dashboard/doctor" : "/dashboard/patient"}
+                    href={user.role === "admin" ? "/admin" : user.role === "doctor" ? "/doctor/dashboard" : "/patient/dashboard"}
                     className="flex items-center gap-2"
                   >
-                    {user.role === "doctor"
+                    {user.role === "admin" || user.role === "doctor"
                       ? <LayoutDashboard className="h-4 w-4 text-primary" />
                       : <UserIcon className="h-4 w-4 text-primary" />}
-                    {user.role === "doctor" ? t("dashboard") : t("profile")}
+                    {user.role === "admin" ? t("controlCenter") : user.role === "doctor" ? t("dashboard") : t("profile")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="text-destructive focus:text-destructive gap-2 rounded-xl"
+                  className="text-rose-400 hover:text-rose-300 focus:text-rose-300 gap-2 rounded-xl"
                 >
                   <LogOut className="h-4 w-4" />
                   {t("logout")}
@@ -141,35 +150,38 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <div className="hidden md:flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="rounded-xl px-4 font-medium" asChild>
-                <Link href="/auth/login">{t("login")}</Link>
-              </Button>
-              <Button
-                size="sm"
-                className="rounded-xl px-5 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02] transition-all duration-200 font-semibold"
-                asChild
+              <Link
+                href="/login"
+                className="px-4 py-2 text-sm font-medium text-muted-foreground rounded-xl hover:text-foreground hover:bg-accent transition-all duration-200"
               >
-                <Link href="/auth/register">{t("register")}</Link>
-              </Button>
+                {t("login")}
+              </Link>
+              <Link
+                href="/register"
+                className="btn-primary text-sm px-5 py-2"
+                style={{ borderRadius: "12px", fontSize: "0.875rem", padding: "0.5rem 1.25rem" }}
+              >
+                {t("register")}
+              </Link>
             </div>
           )}
 
           {/* Mobile hamburger */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden rounded-xl"
+          <button
+            className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-200"
             onClick={() => setMobileOpen((p) => !p)}
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-2xl px-4 pb-5 animate-slide-down">
+        <div
+          className="md:hidden border-t border-border px-4 pb-5 animate-slide-down bg-background/98 backdrop-blur-2xl"
+        >
           <nav className="flex flex-col gap-1 pt-3">
             {navLinks.map((link) => (
               <Link
@@ -179,25 +191,31 @@ export function Header() {
                 className={cn(
                   "px-4 py-2.5 text-sm font-medium rounded-xl transition-colors",
                   isActive(link.href)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
+                style={isActive(link.href) ? { background: "var(--primary) / 0.1" } : {}}
               >
                 {link.label}
               </Link>
             ))}
             {!isAuthenticated && (
-              <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-border/40">
-                <Button variant="outline" className="rounded-xl" asChild onClick={() => setMobileOpen(false)}>
-                  <Link href="/auth/login">{t("login")}</Link>
-                </Button>
-                <Button
-                  className="rounded-xl shadow-md shadow-primary/20 font-semibold"
-                  asChild
+              <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-border">
+                <Link
+                  href="/auth/login"
                   onClick={() => setMobileOpen(false)}
+                  className="w-full py-2.5 text-sm font-medium text-center text-muted-foreground rounded-xl border border-border hover:bg-accent transition-all"
                 >
-                  <Link href="/auth/register">{t("register")}</Link>
-                </Button>
+                  {t("login")}
+                </Link>
+                <Link
+                  href="/auth/register"
+                  onClick={() => setMobileOpen(false)}
+                  className="btn-primary w-full text-center text-sm"
+                  style={{ borderRadius: "12px", padding: "0.625rem 1.25rem" }}
+                >
+                  {t("register")}
+                </Link>
               </div>
             )}
           </nav>

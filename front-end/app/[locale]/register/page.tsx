@@ -36,9 +36,10 @@ export default function RegisterPage() {
       const { data } = await api.post<AuthResponse>("/auth/register", { name, email, password, role, phone });
       login(data.data.user, data.data.token);
       toast.success("Account created successfully!");
-      router.push(role === "doctor" ? "/dashboard/doctor" : "/dashboard/patient");
-    } catch {
-      toast.error("Registration failed. Try again.");
+      router.push(role === "doctor" ? "/dashboard/doctor" : "patient/dashboard");
+    } catch (err: any) {
+      const message = err.response?.data?.message || "Registration failed. Try again.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

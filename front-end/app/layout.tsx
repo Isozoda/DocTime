@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Nunito_Sans, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const nunito = Nunito_Sans({
+const inter = Inter({
   subsets: ["latin", "cyrillic"],
-  variable: "--font-nunito",
+  variable: "--font-inter",
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
@@ -16,14 +16,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "EasyDoc TJ", template: "%s | EasyDoc TJ" },
-  description: "A Doctor in One Click — Book doctors in Tajikistan online",
+  title: { default: "DocTime TJ — Book Top Doctors", template: "%s | DocTime TJ" },
+  description: "Tajikistan's #1 healthcare platform. Book the best doctors in minutes across Dushanbe, Khujand and Bokhtar.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tj" suppressHydrationWarning>
-      <body className={`${nunito.variable} ${geistMono.variable} antialiased min-h-screen`}>
+      <body className={`${inter.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}>
         {children}
       </body>
     </html>

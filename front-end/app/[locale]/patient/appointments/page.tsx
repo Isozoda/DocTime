@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePatientAppointments } from "@/hooks/useAppointments";
-import { formatDate, formatTime, cn } from "@/lib/utils";
+import { formatDate, formatTime, cn, doctorPhotoUrl } from "@/lib/utils";
 import type { AppointmentStatus } from "@/types/appointment";
 import {
   Search, CalendarDays, Clock, CheckCircle,
-  XCircle, AlertCircle, MapPin, ChevronLeft, ChevronRight, Filter,
+  XCircle, AlertCircle, MapPin, ChevronLeft, ChevronRight, Filter, User,
 } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type FilterStatus = "all" | AppointmentStatus;
 
@@ -25,15 +26,17 @@ const STATUS_CONFIG = {
 };
 
 export default function PatientAppointmentsPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const router = useRouter();
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
   const { appointments, isLoading, cancel } = usePatientAppointments();
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== "patient") router.push("/login");
-  }, [isAuthenticated, user, router]);
+    if (isHydrated && (!isAuthenticated || user?.role !== "patient")) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isHydrated, user, router]);
 
   const filtered = appointments.filter((a) =>
     (filter === "all" || a.status === filter) &&
@@ -127,9 +130,21 @@ export default function PatientAppointmentsPage() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div>
-                        <p className="font-semibold text-white">{apt.doctor.user.name}</p>
-                        <p className="text-muted-foreground text-xs">{apt.doctor.specialization}</p>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-12 w-12 rounded-xl border border-white/10 ring-2 ring-primary/5">
+                          <AvatarImage 
+                            src={doctorPhotoUrl(apt.doctor.user.name, apt.doctor.photoUrl)} 
+                            alt={apt.doctor.user.name} 
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                            {apt.doctor.user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-white group-hover:text-primary transition-colors">{apt.doctor.user.name}</p>
+                          <p className="text-muted-foreground text-xs">{apt.doctor.specialization}</p>
+                        </div>
                       </div>
                       <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold", cfg.bg, cfg.color)}>
                         <StatusIcon className="h-3 w-3" />

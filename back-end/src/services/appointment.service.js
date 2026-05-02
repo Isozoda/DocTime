@@ -18,7 +18,7 @@ const appointmentSelect = {
   createdAt: true,
   updatedAt: true,
   patient: {
-    select: { id: true, name: true, email: true, phone: true },
+    select: { id: true, name: true, email: true, phone: true, avatar: true },
   },
   doctor: {
     select: {

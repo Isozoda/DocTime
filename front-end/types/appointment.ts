@@ -12,7 +12,7 @@ export interface Appointment {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
-  patient: Pick<User, "id" | "name" | "email" | "phone">;
+  patient: Pick<User, "id" | "name" | "email" | "phone" | "avatar">;
   doctor: Pick<Doctor, "id" | "specialization" | "city" | "photoUrl"> & {
     user: Pick<User, "id" | "name" | "email" | "phone">;
   };

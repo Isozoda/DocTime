@@ -1,24 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/navigation";
+import { Link } from "@/navigation";
 import { useDoctors } from "@/hooks/useDoctors";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { DoctorGrid } from "@/components/doctors/DoctorGrid";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StarRating } from "@/components/ui/StarRating";
+import { AIChatWidget } from "@/components/ui/AIChatWidget";
+import { DoctorCard } from "@/components/doctors/DoctorCard";
+import Image from "next/image";
 import {
-  Search, Brain, Heart, Baby, Eye, Bone, Activity,
-  Stethoscope, Smile, ArrowRight, CalendarDays, Clock,
-  Droplets, Scan, Ear,
+  Search, Brain, Heart, Baby, Eye, Bone, Activity, Stethoscope,
+  Smile, ArrowRight, CalendarDays, Clock, Droplets, Scan, Ear,
+  CheckCircle, MapPin, Star, Shield, Zap, Users, TrendingUp,
+  Award, HeartPulse, ChevronRight, Sparkles,
 } from "lucide-react";
 import { SPECIALTIES, CITIES } from "@/lib/utils";
-import { Link } from "@/navigation";
 import api from "@/lib/axios";
-
+import type { Doctor } from "@/types/doctor";
+import image1 from "./image/image.png";
+import image2 from "./image/image copy.png";
+import image3 from "./image/image copy 2.png";
+import image4 from "./image/image copy 3.png";
+import image5 from "./image/image copy 4.png";
+import image6 from "./image/image copy 5.png";
+import image7 from "./image/image copy 6.png";
+import image8 from "./image/image copy 7.png";
+import image9 from "./image/image copy 8.png";
+import image10 from "./image/image copy 9.png";
+/* ══════════════ TYPES ══════════════ */
 interface Specialization {
   id: string;
   name: string;
@@ -28,78 +39,430 @@ interface Specialization {
   color: string | null;
 }
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
-  smile: Smile,
-  heart: Heart,
-  brain: Brain,
-  baby: Baby,
-  eye: Eye,
-  activity: Activity,
-  droplets: Droplets,
-  scan: Scan,
-  ear: Ear,
-  stethoscope: Stethoscope,
-  bone: Bone,
-  stomach: Stethoscope,
-  mind: Brain,
+/* ══════════════ STATIC DATA ══════════════ */
+interface DemoDoctor { id: string; name: string; spec: string; rating: number; reviews: number; price: string; photo: string; city: string; slots: string[]; }
+interface DemoClinic { id: string; name: string; city: string; specs: string[]; rating: number; doctors: number; color: string; }
+interface DemoReview { id: string; name: string; city: string; text: string; rating: number; doctor: string; avatar: string; }
+
+const SPEC_COLORS: Record<string, string> = {
+  smile:"#22D3EE", heart:"#F43F5E", brain:"#8B5CF6", baby:"#10B981",
+  eye:"#06B6D4", activity:"#6366F1", droplets:"#3B82F6", scan:"#A855F7",
+  ear:"#14B8A6", stethoscope:"#6366F1", bone:"#84CC16",
 };
 
-const STATS = [
-  { value: "500+", key: "doctors" },
-  { value: "20+", key: "hospitals" },
-  { value: "50,000+", key: "patients" },
-  { value: "4.8", key: "rating" },
-];
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  smile: Smile, heart: Heart, brain: Brain, baby: Baby, eye: Eye,
+  activity: Activity, droplets: Droplets, scan: Scan, ear: Ear,
+  stethoscope: Stethoscope, bone: Bone, stomach: Activity, mind: Brain,
+  waves: Activity,
+};
 
-const TESTIMONIALS = [
-  { name: "Zulfiya Rahimova", city: "Dushanbe", text: "Found an excellent cardiologist in minutes. The booking process was incredibly simple.", rating: 5 },
-  { name: "Behruz Nazarov", city: "Khujand", text: "Great platform! I booked an appointment with a pediatrician for my child the same day.", rating: 5 },
-  { name: "Malika Toshmatova", city: "Bokhtar", text: "Very convenient to compare doctors and read reviews before making a decision.", rating: 4 },
-];
+const SPEC_IMAGES: Record<string, any> = {
+  smile: image1, // Dentist
+  heart: image2, // Cardiologist
+  brain: image3, // Neurologist/Psychiatrist
+  baby: image4, // Pediatrician
+  eye: image5, // Ophthalmologist
+  activity: image6, // Gynecologist/General
+  droplets: image7, // Urologist
+  scan: image8, // Dermatologist/Scan
+  ear: image9, // ENT
+  stethoscope: image10, // Therapist
+  bone: image1, // Orthopedist (Fallback to image1)
+  waves: image2, // Endocrinologist (Fallback to image2)
+};
 
-function SpecializationGrid({ specializations }: { specializations: Specialization[] }) {
-  const displayed = specializations.slice(0, 12);
+/* ══════════════ HOOKS ══════════════ */
+function useInViewport(ref: React.RefObject<HTMLElement | null>, threshold = 0.2) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return visible;
+}
 
+/* ══════════════ ANIMATED COUNTER ══════════════ */
+function AnimatedCounter({ target, suffix, isVisible, delay = 0 }: { target: number; suffix: string; isVisible: boolean; delay?: number }) {
+  const [count, setCount] = useState(0);
+  const done = useRef(false);
+  useEffect(() => {
+    if (!isVisible || done.current) return;
+    done.current = true;
+    const t = setTimeout(() => {
+      const dur = 2000;
+      const start = performance.now();
+      const step = (now: number) => {
+        const p = Math.min((now - start) / dur, 1);
+        const e = 1 - Math.pow(1 - p, 3);
+        setCount(Math.round(e * target));
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [isVisible, target, delay]);
+  return <>{count.toLocaleString()}{suffix}</>;
+}
+
+/* ══════════════ HERO CARD ══════════════ */
+function HeroAppointmentCard() {
+  const t = useTranslations("home");
+  const slots = ["09:00", "11:30", "14:30", "16:00", "17:30"];
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-      {displayed.map((spec) => {
-        const Icon = ICON_MAP[spec.icon ?? ""] ?? Stethoscope;
-        const color = spec.color ?? "#0D9488";
-        return (
-          <Link
-            key={spec.id}
-            href={`/specializations/${spec.slug}`}
-            className="group flex flex-col items-center gap-3 p-5 bg-card border border-border/60 rounded-2xl hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <div
-              className="h-11 w-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-105"
-              style={{ background: `${color}18`, border: `1.5px solid ${color}35` }}
-            >
-              <Icon className="h-5 w-5" style={{ color }} />
+    <div className="relative w-[300px] xl:w-[340px] select-none">
+      {/* Confirmed float badge */}
+      <div
+        className="absolute -top-5 -left-4 z-20 px-3.5 py-2.5 rounded-2xl animate-float bg-emerald-500/10 border border-emerald-500/30 backdrop-blur-xl"
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 rounded-full flex items-center justify-center bg-emerald-500">
+            <CheckCircle className="h-3.5 w-3.5 text-white" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-foreground leading-snug">{t("heroCardConfirmed")}</p>
+            <p className="text-xs text-muted-foreground">{t("heroCardToday")}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main glassmorphism card */}
+      <div
+        className="rounded-[32px] p-6 glass-card shadow-2xl relative overflow-hidden card-shimmer"
+      >
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl flex items-center justify-center bg-primary/10 border border-primary/30">
+              <CalendarDays className="h-4.5 w-4.5 text-primary" />
             </div>
-            <span className="text-xs font-medium text-center leading-snug text-foreground/75 group-hover:text-primary transition-colors">
-              {spec.name}
-            </span>
-          </Link>
-        );
-      })}
+            <div>
+              <p className="text-sm font-bold text-foreground">{t("heroCardTitle")}</p>
+              <p className="text-xs text-muted-foreground">{t("heroCardSlot")}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse-glow" />
+            {t("heroCardOnline")}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-2xl mb-4 bg-primary/5 border border-primary/10">
+          <Image
+            src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100"
+            alt="Dr. Sarah Mitchell"
+            width={48}
+            height={48}
+            className="rounded-xl object-cover shrink-0 border-2 border-primary/30"
+            onError={(e) => { (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=Sarah+Mitchell&background=6366F1&color=fff&size=48&bold=true"; }}
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground">Dr. Sarah Mitchell</p>
+            <p className="text-xs mb-1 text-muted-foreground">Cardiologist</p>
+            <div className="flex items-center gap-0.5">
+              {[1,2,3,4,5].map((s) => (
+                <svg key={s} className="h-3 w-3" viewBox="0 0 20 20" fill="#F59E0B">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+              ))}
+              <span className="text-xs ml-1 text-muted-foreground">5.0</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Time slots */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {slots.map((time, i) => (
+            <div
+              key={time}
+              className="py-2 rounded-xl text-center text-xs font-semibold cursor-pointer"
+              style={i === 2
+                ? { background: "linear-gradient(135deg, #6366F1, #8B5CF6)", color: "white", boxShadow: "0 0 16px rgba(99,102,241,0.5)" }
+                : i === 0
+                ? { background: "rgba(128,128,128,0.08)", color: "var(--muted-foreground)", textDecoration: "line-through" }
+                : { background: "rgba(128,128,128,0.06)", border: "1px solid var(--border)", color: "var(--foreground)" }
+              }
+            >
+              {time}
+            </div>
+          ))}
+        </div>
+
+        {/* Confirm CTA */}
+        <div
+          className="h-10 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-white cursor-pointer transition-all duration-200 hover:scale-[1.02] bg-gradient-to-br from-primary to-secondary shadow-lg shadow-primary/20"
+        >
+          <CheckCircle className="h-4 w-4" />
+          {t("heroCardBtn")}
+        </div>
+      </div>
+
+      {/* Doctors badge bottom-right */}
+      <div
+        className="absolute -bottom-5 -right-4 z-20 px-3.5 py-2.5 rounded-2xl animate-float-d bg-primary/10 border border-primary/20 backdrop-blur-xl"
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 rounded-full flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
+            <Activity className="h-3 w-3 text-white" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-foreground">{t("heroCardDoctors")}</p>
+            <p className="text-xs text-muted-foreground">{t("heroCardReady")}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Trust badge floating */}
+      <div
+        className="absolute top-1/2 -right-12 z-20 px-4 py-3 rounded-2xl animate-float-d bg-card/40 border border-border/30 backdrop-blur-xl hidden lg:block"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl flex items-center justify-center bg-amber-500/10 border border-amber-500/30">
+            <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{t("heroCardRating")}</p>
+            <p className="text-xs text-muted-foreground">{t("heroCardFrom")}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
+/* ══════════════ DOCTOR SCROLL CARD ══════════════ */
+function DoctorScrollCard({ doc }: { doc: DemoDoctor }) {
+  const t = useTranslations("home");
+  const SPEC_COLOR: Record<string, string> = {
+    Cardiologist: "#F43F5E", Neurologist: "#8B5CF6", Pediatrician: "#10B981",
+    Orthopedist: "#84CC16", Gynecologist: "#EC4899", Dermatologist: "#F97316",
+    Ophthalmologist: "#06B6D4", ENT: "#14B8A6",
+  };
+  const color = SPEC_COLOR[doc.spec] ?? "#6366F1";
+
+  return (
+    <div
+      className="flex-shrink-0 w-[260px] rounded-[20px] overflow-hidden transition-all duration-300 hover:-translate-y-1.5 cursor-pointer bg-card/80 border border-border/50 backdrop-blur-md shadow-xl"
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 20px 50px rgba(0,0,0,0.15), 0 0 30px ${color}18`; e.currentTarget.style.borderColor = `${color}40`; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.borderColor = ""; }}
+    >
+      <div className="relative h-36">
+        <img
+          src={doc.photo}
+          alt={doc.name}
+          className="w-full h-full object-cover object-top"
+          onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.name)}&background=6366F1&color=fff&size=200&bold=true`; }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-card/95 via-card/20 to-transparent" />
+        <span className="absolute top-2 right-2 text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${color}15`, border: `1px solid ${color}30`, color }}>{doc.spec}</span>
+      </div>
+      <div className="p-4">
+        <p className="font-bold text-sm text-foreground truncate mb-0.5">{doc.name}</p>
+        <div className="flex items-center gap-1 mb-2">
+          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+          <span className="text-xs font-bold text-foreground">{doc.rating}</span>
+          <span className="text-xs text-muted-foreground">({doc.reviews})</span>
+        </div>
+        <div className="flex items-center gap-1.5 mb-3">
+          <MapPin className="h-3 w-3 text-primary" />
+          <span className="text-xs text-muted-foreground">{doc.city}</span>
+        </div>
+        <div className="flex gap-1.5 mb-3 flex-wrap">
+          {doc.slots.slice(0, 3).map((s) => (
+            <span key={s} className="text-xs px-2 py-0.5 rounded-lg font-medium bg-primary/10 border border-primary/20 text-primary">{s}</span>
+          ))}
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">{t("priceFrom")}</p>
+            <p className="text-sm font-bold text-foreground">{doc.price} TJS</p>
+          </div>
+          <Link href={`/doctors/${doc.id}`} className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-105" style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)`, color: "white" }}>
+            {t("bookShort")}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ CLINIC SCROLL CARD ══════════════ */
+function ClinicScrollCard({ clinic }: { clinic: DemoClinic }) {
+  const t = useTranslations("home");
+  const tHosp = useTranslations("hospitals");
+  return (
+    <div
+      className="flex-shrink-0 w-[300px] rounded-[20px] p-5 transition-all duration-300 hover:-translate-y-1.5 cursor-pointer bg-card/80 border border-border/50 backdrop-blur-md shadow-xl"
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 20px 50px rgba(0,0,0,0.15), 0 0 30px ${clinic.color}15`; e.currentTarget.style.borderColor = `${clinic.color}40`; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.borderColor = ""; }}
+    >
+      {/* Logo */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-12 w-12 rounded-2xl flex items-center justify-center" style={{ background: `${clinic.color}18`, border: `1px solid ${clinic.color}30` }}>
+          <Stethoscope className="h-5.5 w-5.5" style={{ color: clinic.color }} />
+        </div>
+        <div>
+          <p className="font-bold text-sm text-foreground">{clinic.name}</p>
+          <p className="text-xs flex items-center gap-1 text-muted-foreground">
+            <MapPin className="h-3 w-3" style={{ color: clinic.color }} />{clinic.city}
+          </p>
+        </div>
+      </div>
+      {/* Specialties */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {clinic.specs.map((s) => (
+          <span key={s} className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${clinic.color}12`, border: `1px solid ${clinic.color}25`, color: clinic.color }}>{s}</span>
+        ))}
+      </div>
+      {/* Stats */}
+      <div className="flex items-center justify-between pt-3 border-t border-border/50">
+        <div className="flex items-center gap-1">
+          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+          <span className="text-xs font-bold text-foreground">{clinic.rating}</span>
+        </div>
+        <span className="text-xs text-muted-foreground">{clinic.doctors} {tHosp("doctors")}</span>
+        <Link href="/hospitals" className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ background: `${clinic.color}18`, border: `1px solid ${clinic.color}30`, color: clinic.color }}>
+          {t("viewClinic")} →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ REVIEW CARD ══════════════ */
+function ReviewScrollCard({ review }: { review: DemoReview }) {
+  return (
+    <div
+      className="flex-shrink-0 w-[320px] rounded-[20px] p-5 transition-all duration-300 hover:-translate-y-1 cursor-default bg-card/80 border border-border/50 backdrop-blur-md shadow-lg"
+    >
+      {/* Stars */}
+      <div className="flex items-center gap-0.5 mb-3">
+        {Array.from({ length: review.rating }).map((_, i) => (
+          <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+        ))}
+      </div>
+      {/* Quote */}
+      <div className="absolute -top-1 right-4 text-6xl font-serif pointer-events-none select-none opacity-10 text-primary" style={{ lineHeight: 1 }}>&quot;</div>
+      <p className="text-sm leading-relaxed mb-4 relative text-foreground/90">{review.text}</p>
+      {/* Author */}
+      <div className="flex items-center gap-3 pt-3 border-t border-border/50">
+        <div className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-primary to-secondary text-white">
+          {review.avatar}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">{review.name}</p>
+          <p className="text-xs text-muted-foreground">{review.city} • {review.doctor}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ SCROLL VIDEO SECTION ══════════════ */
+function ScrollVideoSection() {
+  const t = useTranslations("home");
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const section = sectionRef.current;
+    if (!video || !section) return;
+
+    const update = () => {
+      rafRef.current = null;
+      const { top, height } = section.getBoundingClientRect();
+      const scrollable = height - window.innerHeight;
+      if (scrollable <= 0) return;
+      const progress = Math.min(1, Math.max(0, -top / scrollable));
+      if (video.duration) {
+        video.currentTime = progress * video.duration;
+      }
+    };
+
+    const onScroll = () => {
+      if (rafRef.current !== null) return;
+      rafRef.current = requestAnimationFrame(update);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return (
+    <div ref={sectionRef} style={{ height: "250vh" }} className="relative">
+      <div className="sticky top-0 h-screen overflow-hidden">
+        <video
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full object-cover"
+          muted
+          playsInline
+          preload="auto"
+          src="/video/hero.mp4"
+        />
+        {/* Overlay */}
+        <div className="absolute inset-0" style={{ background: "rgba(5,8,18,0.50)" }} />
+        {/* Text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none px-4 text-center">
+          <div className="section-badge mb-5">{t("scrollVideoBadge")}</div>
+          <h2
+            className="font-black text-white mb-4"
+            style={{ fontSize: "clamp(2rem, 5vw, 3.75rem)", letterSpacing: "-0.03em", lineHeight: 1.05 }}
+          >
+            {t("scrollVideoTitle")}
+          </h2>
+          <p className="text-white/55 text-base max-w-md">
+            {t("scrollVideoSubtitle")}
+          </p>
+          {/* Scroll indicator */}
+          <div className="absolute bottom-10 flex flex-col items-center gap-2 animate-bounce">
+            <div className="w-px h-12 bg-gradient-to-b from-transparent via-white/40 to-transparent" />
+            <span className="text-xs font-medium tracking-widest uppercase text-white/40">scroll</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ MAIN PAGE ══════════════ */
 export default function HomePage() {
   const t = useTranslations();
   const router = useRouter();
   const [specialty, setSpecialty] = useState("");
   const [city, setCity] = useState("");
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
-
   const { doctors, isLoading } = useDoctors({ limit: 6 });
+  const statsRef = useRef<HTMLDivElement>(null);
+  const statsVisible = useInViewport(statsRef);
+
+  const [scrollDoctors, setScrollDoctors] = useState<DemoDoctor[]>([]);
+  const [scrollClinics, setScrollClinics] = useState<DemoClinic[]>([]);
+  const [scrollReviews, setScrollReviews] = useState<DemoReview[]>([]);
 
   useEffect(() => {
     api.get<{ success: boolean; data: Specialization[] }>("/specializations")
       .then(({ data }) => setSpecializations(data.data))
-      .catch(() => { });
+      .catch(() => {});
+
+    api.get("/public/doctors")
+      .then(({ data }) => setScrollDoctors([...data.data, ...data.data]))
+      .catch(() => {});
+
+    api.get("/public/clinics")
+      .then(({ data }) => setScrollClinics([...data.data, ...data.data]))
+      .catch(() => {});
+
+    api.get("/public/reviews")
+      .then(({ data }) => setScrollReviews([...data.data, ...data.data]))
+      .catch(() => {});
   }, []);
 
   const handleSearch = () => {
@@ -109,213 +472,443 @@ export default function HomePage() {
     router.push(`/doctors?${params}`);
   };
 
+  const th = useTranslations("home");
+
+  const STATS = [
+    { icon: Users, value: 200, suffix: "+", label: th("statsVerifiedDoctors"), sub: th("statsVerifiedSub"), color: "#6366F1" },
+    { icon: CalendarDays, value: 50000, suffix: "+", label: th("statsAppointments"), sub: th("statsAppointmentsSub"), color: "#8B5CF6" },
+    { icon: HeartPulse, value: 98, suffix: "%", label: th("statsSatisfaction"), sub: th("statsSatisfactionSub"), color: "#10B981" },
+    { icon: Award, value: 15, suffix: "+", label: th("statsSpecialties"), sub: th("statsSpecialtiesSub"), color: "#F59E0B" },
+  ];
+
+  const HOW_IT_WORKS = [
+    { icon: Search, num: "01", title: t("howItWorks.step1Title"), desc: t("howItWorks.step1Desc"), color: "#6366F1" },
+    { icon: CalendarDays, num: "02", title: t("howItWorks.step2Title"), desc: t("howItWorks.step2Desc"), color: "#8B5CF6" },
+    { icon: CheckCircle, num: "03", title: t("howItWorks.step3Title"), desc: t("howItWorks.step3Desc"), color: "#10B981" },
+  ];
+
+  /* ── Arrays are already doubled in the effect for seamless loops ── */
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      {/* Hero */}
-      <section className="relative bg-gradient-to-br from-primary/5 via-background to-secondary/5 pt-16 pb-24 px-4 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary/5 rounded-full translate-x-1/3 -translate-y-1/3 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary/5 rounded-full -translate-x-1/3 translate-y-1/3 blur-2xl pointer-events-none" />
+      {/* ── HERO ── */}
+      <section
+        className="relative min-h-[calc(100vh-64px)] flex items-center overflow-hidden hero-bg"
+      >
+        {/* Background video */}
+        <video
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          autoPlay
+          muted
+          loop
+          playsInline
+          src="/video/hero.mp4"
+          style={{ willChange: "transform" }}
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 z-[1]" style={{ background: "rgba(5,8,18,0.55)" }} />
 
-        <div className="container mx-auto max-w-4xl text-center relative">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold bg-primary/10 text-primary border border-primary/20 mb-5">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-glow" />
-            {t("hero.badge")}
-          </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {t("hero.title")}
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
-            {t("hero.subtitle")}
-          </p>
+        {/* Grid overlay */}
+        <div className="absolute inset-0 pointer-events-none grid-overlay opacity-30 dark:opacity-100 z-[2]" />
+        {/* Orbs */}
+        <div className="absolute top-1/4 -left-40 w-96 h-96 rounded-full pointer-events-none z-[2]" style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--primary), transparent 86%) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        <div className="absolute bottom-1/4 -right-40 w-80 h-80 rounded-full pointer-events-none z-[2]" style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--secondary), transparent 90%) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        {/* Particles */}
+        {[...Array(20)].map((_, i) => <div key={i} className="particle z-[2]" />)}
 
-          {/* Search bar */}
-          <div className="flex flex-col sm:flex-row gap-3 glass-card rounded-2xl p-3 shadow-xl shadow-primary/5 max-w-2xl mx-auto">
-            <Select onValueChange={setSpecialty}>
-              <SelectTrigger className="border-0 bg-transparent flex-1">
-                <SelectValue placeholder={t("search.specialty")} />
-              </SelectTrigger>
-              <SelectContent>
-                {SPECIALTIES.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+        <div className="container mx-auto px-4 py-20 w-full relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-50 items-center max-w-6xl mx-auto">
+
+            {/* Left content */}
+            <div className="animate-fade-in-up">
+              {/* Eyebrow badge */}
+              <div className="section-badge mb-6">
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse-glow" />
+                {th("heroBadge")}
+              </div>
+
+              {/* H1 */}
+              <h1 className="font-black leading-[1.02] tracking-tight text-foreground mb-6" style={{ fontSize: "clamp(2.5rem, 6.5vw, 4.5rem)", letterSpacing: "-0.04em" }}>
+                Book the best<br />
+                <span className="gradient-text-indigo">doctors</span> in<br />
+                minutes
+              </h1>
+
+              <p className="text-lg leading-relaxed mb-8 max-w-lg text-muted-foreground">
+                {th("heroSubtitle")}
+              </p>
+
+
+              {/* Search bar */}
+              <div
+                className="flex flex-col w-170 sm:flex-row gap-2.5 p-2.5 rounded-3xl mb-8 bg-card/80 border border-border/50 backdrop-blur-3xl shadow-2xl shadow-primary/5"
+              >
+                <select
+                  value={specialty}
+                  onChange={(e) => setSpecialty(e.target.value)}
+                  className="flex-1 px-3 py-2.5 text-sm rounded-xl outline-none bg-background border border-border text-foreground"
+                >
+                  <option value="">🔍 {t("search.specialty")}</option>
+                  {SPECIALTIES.map((s) => <option key={s} value={s} className="bg-background">{s}</option>)}
+                </select>
+                <select
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="flex-1 px-3 py-2.5 text-sm rounded-xl outline-none bg-background border border-border text-foreground"
+                >
+                  <option value="">📍 {t("search.city")}</option>
+                  {CITIES.map((c) => <option key={c} value={c} className="bg-background">{c}</option>)}
+                </select>
+                <button
+                  onClick={handleSearch}
+                  className="btn-primary px-6 py-2.5 text-sm whitespace-nowrap"
+                  style={{ borderRadius: "12px" }}
+                >
+                  <Search className="h-4 w-4" />
+                  {t("search.button")}
+                </button>
+              </div>
+
+              {/* CTAs */}
+              <div className="flex flex-wrap gap-3 mb-8">
+                <Link href="/doctors" className="btn-primary">
+                  <Stethoscope className="h-4 w-4" />
+                  {th("heroCtaPrimary")}
+                </Link>
+                <Link href="/map" className="btn-glass">
+                  <MapPin className="h-4 w-4" />
+                  {th("heroCtaSecondary")}
+                </Link>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4">
+                {[
+                  { icon: Shield, label: th("trustVerified") },
+                  { icon: CheckCircle, label: th("trustLicensed") },
+                  { icon: Zap, label: th("trustInstant") },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Icon className="h-4 w-4 text-emerald-500" />
+                    {label}
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-            <div className="h-px sm:h-auto sm:w-px bg-border/60" />
-            <Select onValueChange={setCity}>
-              <SelectTrigger className="border-0 bg-transparent flex-1">
-                <SelectValue placeholder={t("search.city")} />
-              </SelectTrigger>
-              <SelectContent>
-                {CITIES.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button className="gap-2 px-6 rounded-xl shadow-md shadow-primary/20" onClick={handleSearch}>
-              <Search className="h-4 w-4" />
-              {t("search.button")}
-            </Button>
+              </div>
+            </div>
+
+            {/* Right — hero card */}
+            <div className="hidden lg:flex justify-center items-center animate-fade-in-up delay-200">
+              <HeroAppointmentCard />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-12 px-4 relative">
-        <div className="container mx-auto max-w-4xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {STATS.map((s, idx) => (
+      {/* ── SCROLL VIDEO SECTION ── */}
+      <ScrollVideoSection />
+
+      {/* ── DOCTORS SCROLL STRIP ── */}
+      <section className="py-20 bg-muted/20 border-y border-border/50 relative">
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-background via-transparent to-background opacity-20" />
+        <div className="container mx-auto px-4 mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="section-badge mb-3">{th("topSpecialistsBadge")}</div>
+              <h2 className="text-2xl font-bold text-foreground">{th("topSpecialistsTitle")}</h2>
+            </div>
+            <Link href="/doctors" className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary text-muted-foreground">
+              {th("viewAll")} <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+        <div className="scroll-container">
+          <div className="scroll-track">
+            {scrollDoctors.map((doc, i) => (
+              <DoctorScrollCard key={`${doc.id}-${i}`} doc={doc} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        ref={statsRef}
+        className="relative py-24 overflow-hidden stats-bg border-b border-border/50"
+      >
+        <div className="absolute inset-0 pointer-events-none grid-overlay opacity-10 dark:opacity-100" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-12">
+            <div className="section-badge mb-4">{th("statsBadge")}</div>
+            <h2 className="text-3xl font-bold text-foreground mb-3 gradient-text-indigo">{th("statsTitle")}</h2>
+            <p className="text-muted-foreground">{th("statsSubtitle")}</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            {STATS.map(({ icon: Icon, value, suffix, label, sub, color }, idx) => (
               <div
-                key={s.key}
-                className="bg-card rounded-2xl border border-border/60 p-6 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 animate-fade-in-up"
-                style={{ animationDelay: `${idx * 0.1}s` }}
+                key={label}
+                className="group rounded-[20px] p-6 text-center transition-all duration-300 hover:-translate-y-1.5 animate-fade-in-up bg-card/80 border border-border/50 shadow-xl"
+                style={{
+                  animationDelay: `${idx * 0.1}s`,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 20px 50px rgba(0,0,0,0.1), 0 0 30px ${color}15`; e.currentTarget.style.borderColor = `${color}40`; }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.borderColor = ""; }}
               >
-                <p className="text-3xl md:text-4xl font-extrabold gradient-text">{s.value}</p>
-                <p className="text-muted-foreground text-sm mt-1.5">{t(`stats.${s.key}`)}</p>
+                <div className="h-12 w-12 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-transform duration-300 group-hover:scale-110" style={{ background: `${color}15`, border: `1px solid ${color}30` }}>
+                  <Icon className="h-5.5 w-5.5" style={{ color }} />
+                </div>
+                <p className="text-3xl md:text-4xl font-black mb-1.5 tabular-nums" style={{ color }}>
+                  <AnimatedCounter target={value} suffix={suffix} isVisible={statsVisible} delay={idx * 120} />
+                </p>
+                <p className="text-sm font-semibold text-foreground mb-0.5">{label}</p>
+                <p className="text-xs text-muted-foreground">{sub}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Specializations — spoke/mind-map */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto max-w-5xl">
+      {/* ── HOW IT WORKS ── */}
+      <section className="py-24 relative overflow-hidden bg-background">
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-80 h-80 rounded-full pointer-events-none opacity-50 dark:opacity-100" style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--primary), transparent 94%) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-14">
+            <div className="section-badge mb-4">{th("howItWorksBadge")}</div>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3 gradient-text-indigo">
+              {th("howItWorksTitle")}
+            </h2>
+            <p className="max-w-xl mx-auto text-muted-foreground">
+              {th("howItWorksSubtitle")}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto relative">
+            {/* Connecting line */}
+            <div className="hidden md:block absolute top-1/4 left-1/4 right-1/4 h-px pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.4), transparent)" }} />
+
+            {HOW_IT_WORKS.map((step, idx) => (
+              <div
+                key={step.num}
+                className="group relative rounded-[20px] p-7 text-center transition-all duration-300 hover:-translate-y-2 animate-fade-in-up bg-card/80 border border-border/50 shadow-lg"
+                style={{ animationDelay: `${idx * 0.15}s` }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${step.color}40`; e.currentTarget.style.boxShadow = `0 20px 50px rgba(0,0,0,0.1), 0 0 30px ${step.color}12`; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = ""; e.currentTarget.style.boxShadow = ""; }}
+              >
+                {/* Step number */}
+                <span className="absolute top-4 right-5 text-4xl font-black pointer-events-none opacity-5 dark:opacity-10 text-foreground">{step.num}</span>
+                {/* Icon */}
+                <div className="relative mx-auto mb-5 w-fit">
+                  <div className="h-16 w-16 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110" style={{ background: `linear-gradient(135deg, ${step.color}20, ${step.color}08)`, border: `1px solid ${step.color}30` }}>
+                    <step.icon className="h-7 w-7" style={{ color: step.color }} />
+                  </div>
+                </div>
+                <h3 className="font-bold text-lg text-foreground mb-2">{step.title}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CLINICS SCROLL STRIP ── */}
+      <section className="py-20 bg-muted/20 border-y border-border/50 relative">
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-background via-transparent to-background opacity-20" />
+        <div className="container mx-auto px-4 mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="section-badge mb-3">{th("clinicsBadge")}</div>
+              <h2 className="text-2xl font-bold text-foreground">{th("clinicsTitle")}</h2>
+            </div>
+            <Link href="/hospitals" className="flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary text-muted-foreground">
+              {th("viewAll")} <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+        <div className="scroll-container">
+          <div className="scroll-track-reverse">
+            {scrollClinics.map((c, i) => (
+              <ClinicScrollCard key={`${c.id}-${i}`} clinic={c} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SPECIALIZATIONS GRID ── */}
+      <section className="py-24 bg-background relative border-b border-border/50">
+        <div className="container mx-auto px-4 max-w-5xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold">{t("specialties.title")}</h2>
-            <p className="text-muted-foreground mt-2">{t("specialties.subtitle")}</p>
+            <div className="section-badge mb-4">{th("specialtiesBadge")}</div>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3 gradient-text-indigo">
+              {th("specialtiesTitle")}
+            </h2>
+            <p className="text-muted-foreground">{th("specialtiesSubtitle")}</p>
           </div>
 
           {specializations.length > 0 ? (
-            <SpecializationGrid specializations={specializations} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+              {specializations.slice(0, 16).map((spec, idx) => {
+                const Icon = ICON_MAP[spec.icon ?? ""] ?? Stethoscope;
+                const color = spec.color ?? (SPEC_COLORS[spec.icon ?? ""] ?? "#6366F1");
+                const imageUrl = SPEC_IMAGES[spec.icon ?? ""] || "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80";
+                
+                return (
+                  <Link
+                    key={spec.id}
+                    href={`/specializations/${spec.slug}`}
+                    className="group relative h-48 md:h-60 rounded-[32px] overflow-hidden transition-all duration-500 hover:-translate-y-2 animate-fade-in-up border border-white/10 shadow-2xl card-shimmer"
+                    style={{
+                      animationDelay: `${idx * 0.05}s`,
+                    }}
+                  >
+                    {/* Background image */}
+                    <Image
+                      src={imageUrl}
+                      alt={spec.name}
+                      fill
+                      className="object-cover transition-transform duration-1000 group-hover:scale-110"
+                    />
+                    {/* Glass Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/90 transition-opacity duration-500 group-hover:opacity-90" />
+                    
+                    {/* Internal Glow */}
+                    <div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                      style={{ background: `radial-gradient(circle at center, ${color}15 0%, transparent 70%)` }}
+                    />
+                    
+                    {/* Content */}
+                    <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
+                      <div
+                        className="h-11 w-11 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-2xl self-end transition-all duration-500 group-hover:rotate-[360deg] group-hover:scale-110"
+                        style={{ background: `color-mix(in oklch, ${color}, transparent 50%)` }}
+                      >
+                        <Icon className="h-5.5 w-5.5 text-white" />
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-px w-6 bg-white/30" />
+                          <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em]">
+                            {th("specialtiesLabel")}
+                          </span>
+                        </div>
+                        <h3 className="text-xl md:text-2xl font-black text-white leading-tight tracking-tight group-hover:text-primary transition-colors duration-300">
+                          {spec.name}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* Outer Border Light */}
+                    <div className="absolute inset-0 rounded-[32px] border border-white/5 pointer-events-none group-hover:border-white/20 transition-colors duration-500" />
+                  </Link>
+                );
+              })}
+            </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />
+                <div key={i} className="h-48 md:h-56 rounded-[28px] skeleton-shimmer" style={{ border: "1px solid var(--border)" }} />
               ))}
             </div>
           )}
 
           <div className="text-center mt-10">
-            <Button variant="outline" asChild>
-              <Link href="/doctors">Все врачи <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </Button>
+            <Link href="/doctors" className="btn-glass inline-flex">
+              {th("viewAllDoctors")} <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Top Doctors */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-5xl">
+      {/* ── TOP DOCTORS GRID ── */}
+      <section className="py-24 bg-muted/20 border-b border-border/50">
+        <div className="container mx-auto px-4 max-w-5xl">
           <div className="flex items-end justify-between mb-10">
             <div>
-              <h2 className="text-3xl font-bold">{t("doctors.title")}</h2>
-              <p className="text-muted-foreground mt-2">{t("doctors.subtitle")}</p>
+              <div className="section-badge mb-3">{th("featuredBadge")}</div>
+              <h2 className="text-3xl font-bold text-foreground">{t("doctors.title")}</h2>
+              <p className="mt-2 text-muted-foreground">{t("doctors.subtitle")}</p>
             </div>
-            <Button variant="ghost" asChild className="gap-2 hidden sm:flex">
-              <Link href="/doctors">
-                {t("doctors.findAll")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            <Link href="/doctors" className="hidden sm:flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary text-muted-foreground">
+              {t("doctors.findAll")} <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <DoctorGrid doctors={doctors} isLoading={isLoading} skeletonCount={6} />
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-72 rounded-[20px] skeleton-shimmer" style={{ border: "1px solid rgba(255,255,255,0.06)" }} />
+              ))}
+            </div>
+          ) : doctors.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {doctors.map((doc) => <DoctorCard key={doc.id} doctor={doc} />)}
+            </div>
+          ) : (
+            <div className="text-center py-16 rounded-[20px] bg-card/80 border border-border/50">
+              <Stethoscope className="h-10 w-10 mx-auto mb-3 text-primary" />
+              <p className="font-semibold text-foreground mb-1">{th("noFeaturedDoctors")}</p>
+              <p className="text-sm text-muted-foreground">{th("noFeaturedHint")}</p>
+            </div>
+          )}
+
           <div className="text-center mt-8 sm:hidden">
-            <Button variant="outline" asChild>
-              <Link href="/doctors">{t("doctors.findAll")}</Link>
-            </Button>
+            <Link href="/doctors" className="btn-glass inline-flex">{t("doctors.findAll")}</Link>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl font-bold mb-3">{t("howItWorks.title")}</h2>
-          <p className="text-muted-foreground mb-12">{t("howItWorks.subtitle")}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            {[
-              { icon: Search, titleKey: "step1Title", descKey: "step1Desc", num: "1" },
-              { icon: CalendarDays, titleKey: "step2Title", descKey: "step2Desc", num: "2" },
-              { icon: Clock, titleKey: "step3Title", descKey: "step3Desc", num: "3" },
-            ].map((step, idx) => (
-              <div
-                key={step.num}
-                className="flex flex-col items-center bg-card border border-border/60 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 animate-fade-in-up"
-                style={{ animationDelay: `${idx * 0.15}s` }}
-              >
-                <div className="relative mb-5">
-                  <div className="h-14 w-14 rounded-2xl bg-primary/8 flex items-center justify-center border border-primary/15">
-                    <step.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shadow-sm">
-                    {step.num}
-                  </span>
-                </div>
-                <h3 className="font-semibold text-base mb-2">{t(`howItWorks.${step.titleKey}`)}</h3>
-                <p className="text-muted-foreground text-sm text-center leading-relaxed">{t(`howItWorks.${step.descKey}`)}</p>
-              </div>
+      {/* ── REVIEWS SCROLL STRIP ── */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4 mb-8">
+          <div className="text-center">
+            <div className="section-badge mb-4">{th("testimonialsBadge")}</div>
+            <h2 className="text-2xl font-bold text-foreground">{t("testimonials.title")}</h2>
+          </div>
+        </div>
+        <div className="scroll-container">
+          <div className="scroll-track-slow">
+            {scrollReviews.map((r, i) => (
+              <ReviewScrollCard key={`${r.id}-${i}`} review={r} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-4xl">
-          <h2 className="text-3xl font-bold text-center mb-10">{t("testimonials.title")}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((review, idx) => (
-              <div
-                key={review.name}
-                className="bg-card border border-border/60 rounded-2xl p-6 relative overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 shadow-sm animate-fade-in-up"
-                style={{ animationDelay: `${idx * 0.12}s` }}
-              >
-                <div className="absolute -top-2 -right-1 text-7xl font-serif text-primary/8 leading-none select-none pointer-events-none">
-                  "
-                </div>
-                <StarRating rating={review.rating} className="mb-3" />
-                <p className="text-sm text-foreground/70 mb-5 leading-relaxed">
-                  {review.text}
-                </p>
-                <div className="flex items-center gap-3 pt-4 border-t border-border/50">
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.name)}&background=0D9488&color=fff&size=40`}
-                    alt={review.name}
-                    className="h-9 w-9 rounded-full ring-2 ring-primary/20 shrink-0"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold leading-snug">{review.name}</p>
-                    <p className="text-xs text-muted-foreground">{review.city}</p>
-                  </div>
-                </div>
+      {/* ── CTA ── */}
+      <section className="py-24 relative overflow-hidden bg-muted/30">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, color-mix(in oklch, var(--primary), transparent 88%) 0%, transparent 70%)" }} />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-full pointer-events-none bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
+        <div className="container mx-auto px-4 max-w-2xl text-center relative z-10">
+          <div className="section-badge mb-6">{th("ctaBadge")}</div>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            {t("cta.title")}
+          </h2>
+          <p className="text-lg mb-10 text-muted-foreground">{t("cta.subtitle")}</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/auth/register" className="btn-primary px-8 py-3.5 text-base">
+              <Sparkles className="h-4 w-4" />
+              {t("cta.button")}
+            </Link>
+            <Link href="/doctors" className="btn-glass px-8 py-3.5 text-base">
+              {th("ctaBrowse")} →
+            </Link>
+          </div>
+          {/* Trust row */}
+          <div className="flex flex-wrap items-center justify-center gap-6 mt-10">
+            {[th("ctaTrust1"), th("ctaTrust2"), th("ctaTrust3")].map((item) => (
+              <div key={item} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                {item}
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20 px-4 bg-gradient-to-br from-primary via-primary/95 to-secondary relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-0 right-0 w-72 h-72 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-56 h-56 bg-white/5 rounded-full -translate-x-1/2 translate-y-1/2 blur-2xl pointer-events-none" />
-        <div className="container mx-auto max-w-2xl text-center text-white relative z-10">
-          <h2 className="text-3xl md:text-4xl font-bold mb-3">{t("cta.title")}</h2>
-          <p className="text-white/80 mb-8 text-lg">{t("cta.subtitle")}</p>
-          <Button
-            size="lg"
-            asChild
-            className="bg-white text-primary hover:bg-white/95 font-semibold px-8 rounded-full shadow-xl shadow-black/20"
-          >
-            <Link href="/auth/register">{t("cta.button")}</Link>
-          </Button>
         </div>
       </section>
 
       <Footer />
+
+      {/* ── FLOATING AI CHAT ── */}
+      <AIChatWidget />
     </div>
   );
 }

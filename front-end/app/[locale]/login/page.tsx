@@ -29,7 +29,7 @@ export default function LoginPage() {
       login(data.data.user, data.data.token);
       toast.success(`Welcome back, ${data.data.user.name}!`);
       const role = data.data.user.role;
-      router.push(role === "doctor" ? "/dashboard/doctor" : role === "admin" ? "/admin" : "/dashboard/patient");
+      router.push(role === "doctor" ? "/doctor/dashboard" : role === "admin" ? "/admin" : "/patient/dashboard");
     } catch {
       toast.error("Invalid credentials");
     } finally {
