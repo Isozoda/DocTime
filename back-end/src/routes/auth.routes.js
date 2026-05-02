@@ -38,7 +38,7 @@ const { register, login, sendOtp, verifyOtp } = require('../validators/auth.vali
  *                 type: string
  *               role:
  *                 type: string
- *                 enum: [patient, doctor]
+ *                 enum: [patient, doctor, admin]
  *               specialization:
  *                 type: string
  *     responses:

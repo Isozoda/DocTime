@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Link } from "@/navigation";
 import type { Doctor } from "@/types/doctor";
-import { doctorPhotoUrl } from "@/lib/utils";
+import { doctorPhotoUrl, cn } from "@/lib/utils";
 import { MapPin, Clock, Star, Phone, CalendarDays, Wifi } from "lucide-react";
 import Image from "next/image";
 
@@ -47,9 +48,13 @@ interface DoctorCardProps {
 
 export function DoctorCard({ doctor }: DoctorCardProps) {
   const t = useTranslations("doctors");
+  const [imageError, setImageError] = useState(false);
   const color = SPEC_COLORS[doctor.specialization] ?? "#6366F1";
   const specRu = SPEC_NAMES_RU[doctor.specialization] ?? doctor.specialization;
-  const photo = doctorPhotoUrl(doctor.user.name, doctor.photoUrl);
+  
+  const primaryPhoto = doctorPhotoUrl(doctor.user.name, doctor.photoUrl);
+  const fallbackPhoto = `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.user.name)}&background=6366F1&color=fff&size=400&bold=true`;
+  const photo = imageError ? fallbackPhoto : primaryPhoto;
 
   return (
     <div
@@ -64,23 +69,27 @@ export function DoctorCard({ doctor }: DoctorCardProps) {
       }}
     >
       {/* Photo area */}
-      <div className="relative h-48 w-full overflow-hidden">
+      <div className="relative h-48 w-full overflow-hidden bg-muted/20">
         <Image
           src={photo}
           alt={doctor.user.name}
           fill
           sizes="(max-width: 768px) 100vw, 300px"
-          className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.user.name)}&background=6366F1&color=fff&size=400&bold=true`;
-          }}
+          className={cn(
+            "object-cover object-top transition-all duration-500 group-hover:scale-105",
+            imageError ? "p-8 opacity-60" : "opacity-100"
+          )}
+          onError={() => setImageError(true)}
+          priority={false}
         />
-        {/* Gradient overlay */}
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-card/95 via-card/40 to-transparent"
-        />
+        {/* Gradient overlay - only show if not using fallback UI avatar */}
+        {!imageError && (
+          <div
+            className="absolute inset-0 bg-gradient-to-t from-card/95 via-card/40 to-transparent"
+          />
+        )}
         {/* Specialty badge */}
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 z-10">
           <span
             className="text-xs font-bold px-2.5 py-1 rounded-full"
             style={{

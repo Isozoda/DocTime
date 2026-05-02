@@ -77,7 +77,7 @@ export default function PatientDashboardPage() {
     .filter((a) => a.status !== "cancelled" && new Date(a.date) >= new Date())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 3);
-
+    
   return (
     <div className="flex min-h-screen bg-background">
       <PatientNavSidebar />

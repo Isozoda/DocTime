@@ -16,14 +16,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Stethoscope, Check, Eye, EyeOff, Loader2, User,
+  Stethoscope, Check, Eye, EyeOff, Loader2, User, Shield,
   ChevronLeft, Star, MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 /* ─── types ─── */
-type Role = "patient" | "doctor";
+type Role = "patient" | "doctor" | "admin";
 
 /* ─── step meta ─── */
 function useSteps(role: Role, t: ReturnType<typeof useTranslations<"auth">>) {
@@ -33,12 +33,12 @@ function useSteps(role: Role, t: ReturnType<typeof useTranslations<"auth">>) {
     t("stepPassword"),
     t("stepBooking"),
   ];
-  const doctor = [
+  const other = [
     t("stepPersonal"),
     t("stepVerification"),
     t("stepPassword"),
   ];
-  return role === "patient" ? patient : doctor;
+  return role === "patient" ? patient : other;
 }
 
 /* ─── step indicator ─── */
@@ -218,7 +218,9 @@ export default function RegisterPage() {
     toast.success(`Welcome to EasyDoc TJ, ${user.name.split(" ")[0]}!`);
 
     if (role === "doctor") {
-      router.push("/dashboard/doctor");
+      router.push("/doctor/dashboard");
+    } else if (role === "admin") {
+      router.push("/admin");
     } else {
       // load doctors for step 4
       setDocLoading(true);
@@ -259,7 +261,7 @@ export default function RegisterPage() {
 
             {/* Role toggle */}
             <div className="flex rounded-xl border border-border p-1 bg-muted">
-              {(["patient", "doctor"] as Role[]).map((r) => (
+              {(["patient", "doctor", "admin"] as Role[]).map((r) => (
                 <button
                   key={r}
                   type="button"
@@ -271,8 +273,10 @@ export default function RegisterPage() {
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {r === "patient" ? <User className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />}
-                  {t(r === "patient" ? "asPatient" : "asDoctor")}
+                  {r === "patient" && <User className="h-4 w-4" />}
+                  {r === "doctor" && <Stethoscope className="h-4 w-4" />}
+                  {r === "admin" && <Shield className="h-4 w-4" />}
+                  {t(r === "patient" ? "asPatient" : r === "doctor" ? "asDoctor" : "asAdmin")}
                 </button>
               ))}
             </div>

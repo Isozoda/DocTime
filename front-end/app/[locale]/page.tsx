@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/navigation";
 import { Link } from "@/navigation";

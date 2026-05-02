@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "@/navigation";
 import { Link } from "@/navigation";
 import { useAuthStore } from "@/store/authStore";
@@ -9,13 +9,13 @@ import api from "@/lib/axios";
 import type { AuthResponse } from "@/types/user";
 import {
   User, Mail, Lock, Phone, ArrowRight, Stethoscope,
-  Shield, BarChart2, CheckCircle,
+  Shield, BarChart2, CheckCircle, ShieldCheck, Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type Role = "patient" | "doctor";
+type Role = "patient" | "doctor" | "admin";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,6 +27,16 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAvatar(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +46,9 @@ export default function RegisterPage() {
       const { data } = await api.post<AuthResponse>("/auth/register", { name, email, password, role, phone });
       login(data.data.user, data.data.token);
       toast.success("Account created successfully!");
-      router.push(role === "doctor" ? "/dashboard/doctor" : "patient/dashboard");
+      if (role === "doctor") router.push("/dashboard/doctor");
+      else if (role === "admin") router.push("/admin");
+      else router.push("/patient/dashboard");
     } catch (err: any) {
       const message = err.response?.data?.message || "Registration failed. Try again.";
       toast.error(message);
@@ -127,37 +139,76 @@ export default function RegisterPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Avatar upload */}
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative group h-20 w-20 rounded-full border-2 border-dashed border-border/60 hover:border-primary transition-colors overflow-hidden bg-muted/30 flex items-center justify-center"
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt="avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-8 w-8 text-muted-foreground" />
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Camera className="h-5 w-5 text-white" />
+                    </div>
+                  </button>
+                  <p className="text-xs text-muted-foreground">Click to upload photo</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleAvatarChange}
+                  />
+                </div>
+
                 {/* Role selection */}
-                <div className="grid grid-cols-2 gap-3">
-                  {(["patient", "doctor"] as Role[]).map((r) => (
-                    <label key={r} className="cursor-pointer">
-                      <input
-                        type="radio"
-                        name="role"
-                        value={r}
-                        checked={role === r}
-                        onChange={() => setRole(r)}
-                        className="sr-only"
-                      />
-                      <div className={`p-5 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${
-                        role === r
-                          ? "border-secondary bg-secondary/8 shadow-sm shadow-secondary/20"
-                          : "border-border/40 bg-muted/20 hover:bg-muted/40"
-                      }`}>
-                        <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                          r === "patient" ? "bg-primary/10 text-primary" : "bg-secondary/10 text-secondary"
+                <div className="grid grid-cols-3 gap-3">
+                  {(["patient", "doctor", "admin"] as Role[]).map((r) => {
+                    const icons = {
+                      patient: <User className="h-6 w-6" />,
+                      doctor: <Stethoscope className="h-6 w-6" />,
+                      admin: <ShieldCheck className="h-6 w-6" />,
+                    };
+                    const descriptions = {
+                      patient: "Seek care & track health",
+                      doctor: "Provide care & manage practice",
+                      admin: "Manage platform & users",
+                    };
+                    const colors = {
+                      patient: "bg-primary/10 text-primary",
+                      doctor: "bg-secondary/10 text-secondary",
+                      admin: "bg-rose-500/10 text-rose-400",
+                    };
+                    return (
+                      <label key={r} className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="role"
+                          value={r}
+                          checked={role === r}
+                          onChange={() => setRole(r)}
+                          className="sr-only"
+                        />
+                        <div className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
+                          role === r
+                            ? "border-secondary bg-secondary/8 shadow-sm shadow-secondary/20"
+                            : "border-border/40 bg-muted/20 hover:bg-muted/40"
                         }`}>
-                          {r === "patient" ? <User className="h-6 w-6" /> : <Stethoscope className="h-6 w-6" />}
+                          <div className={`h-11 w-11 rounded-full flex items-center justify-center ${colors[r]}`}>
+                            {icons[r]}
+                          </div>
+                          <div className="text-center">
+                            <p className="font-semibold capitalize text-sm">{r}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{descriptions[r]}</p>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <p className="font-semibold capitalize">{r}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {r === "patient" ? "Seek care & track health" : "Provide care & manage practice"}
-                          </p>
-                        </div>
-                      </div>
-                    </label>
-                  ))}
+                      </label>
+                    );
+                  })}
                 </div>
 
                 {/* Fields */}

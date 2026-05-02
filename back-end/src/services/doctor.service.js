@@ -3,6 +3,7 @@ const fs = require('fs');
 const prisma = require('../config/prisma');
 const { createError } = require('../middlewares/error.middleware');
 
+// Only include fields that existed before schema changes — safe with any Prisma client state
 const doctorSelect = {
   id: true,
   specialization: true,
@@ -21,7 +22,12 @@ const doctorSelect = {
   },
 };
 
-/** Serialize schedule object → JSON string for SQLite String? field */
+const CITY_CENTERS = {
+  Dushanbe: { lat: 38.560, lng: 68.786 },
+  Khujand:  { lat: 40.290, lng: 70.143 },
+  Bokhtar:  { lat: 37.831, lng: 68.779 },
+};
+
 const prepareData = (data) => {
   const out = { ...data };
   if (out.schedule !== undefined && out.schedule !== null && typeof out.schedule === 'object') {
@@ -30,11 +36,65 @@ const prepareData = (data) => {
   return out;
 };
 
-const formatDoctor = (doctor) => {
+// Fetch the first hospital for a given doctorId via a separate query (no nested select)
+const getHospitalForDoctor = async (doctorId) => {
+  try {
+    const link = await prisma.hospitalDoctor.findFirst({
+      where: { doctorId },
+      include: {
+        hospital: {
+          select: { id: true, name: true, address: true, city: true },
+        },
+      },
+    });
+    return link?.hospital ?? null;
+  } catch {
+    return null;
+  }
+};
+
+// Bulk-fetch hospitals for multiple doctors in one query
+const getHospitalsForDoctors = async (doctorIds) => {
+  if (!doctorIds.length) return {};
+  try {
+    const links = await prisma.hospitalDoctor.findMany({
+      where: { doctorId: { in: doctorIds } },
+      include: {
+        hospital: {
+          select: { id: true, name: true, address: true, city: true },
+        },
+      },
+    });
+    const map = {};
+    for (const link of links) {
+      if (!map[link.doctorId]) map[link.doctorId] = link.hospital;
+    }
+    return map;
+  } catch {
+    return {};
+  }
+};
+
+const formatDoctor = (doctor, hospital = null) => {
   if (!doctor) return null;
+
+  const photoUrl =
+    doctor.photoUrl?.trim()
+      ? doctor.photoUrl
+      : doctor.user?.avatar?.trim()
+        ? doctor.user.avatar
+        : null;
+
+  const city = doctor.city ?? '';
+  const lat = CITY_CENTERS[city]?.lat ?? 38.560;
+  const lng = CITY_CENTERS[city]?.lng ?? 68.786;
+
   return {
     ...doctor,
-    photoUrl: doctor.photoUrl || doctor.user?.avatar || null
+    photoUrl,
+    lat,
+    lng,
+    hospital: hospital ?? null,
   };
 };
 
@@ -60,7 +120,8 @@ const getProfileByUserId = async (userId) => {
     select: doctorSelect,
   });
   if (!doctor) throw createError(404, 'Doctor profile not found');
-  return formatDoctor(doctor);
+  const hospital = await getHospitalForDoctor(doctor.id);
+  return formatDoctor(doctor, hospital);
 };
 
 const getDoctorById = async (doctorId) => {
@@ -69,7 +130,8 @@ const getDoctorById = async (doctorId) => {
     select: doctorSelect,
   });
   if (!doctor) throw createError(404, 'Doctor not found');
-  return formatDoctor(doctor);
+  const hospital = await getHospitalForDoctor(doctorId);
+  return formatDoctor(doctor, hospital);
 };
 
 const updateProfile = async (userId, data) => {
@@ -81,14 +143,14 @@ const updateProfile = async (userId, data) => {
     data: prepareData(data),
     select: doctorSelect,
   });
-  return formatDoctor(updated);
+  const hospital = await getHospitalForDoctor(updated.id);
+  return formatDoctor(updated, hospital);
 };
 
 const getDoctorClients = async (userId) => {
   const doctor = await prisma.doctor.findUnique({ where: { userId } });
   if (!doctor) throw createError(404, 'Doctor profile not found');
 
-  // Get unique patients from appointments
   const appointments = await prisma.appointment.findMany({
     where: { doctorId: doctor.id },
     select: {
@@ -101,17 +163,12 @@ const getDoctorClients = async (userId) => {
     orderBy: { createdAt: 'desc' },
   });
 
-  // Deduplicate by patient id, keep the latest appointment info
   const seen = new Set();
   const clients = [];
   for (const apt of appointments) {
     if (!seen.has(apt.patient.id)) {
       seen.add(apt.patient.id);
-      clients.push({
-        ...apt.patient,
-        lastVisit: apt.createdAt,
-        lastStatus: apt.status,
-      });
+      clients.push({ ...apt.patient, lastVisit: apt.createdAt, lastStatus: apt.status });
     }
   }
   return clients;
@@ -136,7 +193,11 @@ const getAllDoctors = async ({ specialization, city, rating, page = 1, limit = 1
     prisma.doctor.count({ where }),
   ]);
 
-  const mapped = doctors.map(formatDoctor);
+  // Bulk-fetch all hospital links in one extra query — no nested select issues
+  const doctorIds = doctors.map((d) => d.id);
+  const hospitalMap = await getHospitalsForDoctors(doctorIds);
+
+  const mapped = doctors.map((d) => formatDoctor(d, hospitalMap[d.id] ?? null));
 
   return {
     doctors: mapped,
@@ -153,16 +214,12 @@ const uploadPhoto = async (userId, filename) => {
   const doctor = await prisma.doctor.findUnique({ where: { userId }, select: { photoUrl: true } });
   if (!doctor) throw createError(404, 'Doctor profile not found');
 
-  if (doctor.photoUrl && doctor.photoUrl.startsWith('/uploads/')) {
-    const oldPath = path.join(__dirname, '../../', doctor.photoUrl);
-    fs.unlink(oldPath, () => {});
+  if (doctor.photoUrl?.startsWith('/uploads/')) {
+    fs.unlink(path.join(__dirname, '../../', doctor.photoUrl), () => {});
   }
 
   const photoUrl = `/uploads/doctors/${filename}`;
-  await prisma.user.update({
-    where: { id: userId },
-    data: { avatar: photoUrl },
-  });
+  await prisma.user.update({ where: { id: userId }, data: { avatar: photoUrl } });
   const updated = await prisma.doctor.update({
     where: { userId },
     data: { photoUrl },
@@ -175,15 +232,11 @@ const deletePhoto = async (userId) => {
   const doctor = await prisma.doctor.findUnique({ where: { userId }, select: { photoUrl: true } });
   if (!doctor) throw createError(404, 'Doctor profile not found');
 
-  if (doctor.photoUrl && doctor.photoUrl.startsWith('/uploads/')) {
-    const filePath = path.join(__dirname, '../../', doctor.photoUrl);
-    fs.unlink(filePath, () => {});
+  if (doctor.photoUrl?.startsWith('/uploads/')) {
+    fs.unlink(path.join(__dirname, '../../', doctor.photoUrl), () => {});
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { avatar: null },
-  });
+  await prisma.user.update({ where: { id: userId }, data: { avatar: null } });
   const updated = await prisma.doctor.update({
     where: { userId },
     data: { photoUrl: null },
@@ -192,13 +245,11 @@ const deletePhoto = async (userId) => {
   return formatDoctor(updated);
 };
 
-/** Link a doctor to a hospital (upsert — replaces any previous single hospital link) */
 const setHospital = async (userId, hospitalId) => {
   const doctor = await prisma.doctor.findUnique({ where: { userId } });
   if (!doctor) throw createError(404, 'Doctor profile not found');
 
   if (!hospitalId) {
-    // Remove all hospital links for this doctor
     await prisma.hospitalDoctor.deleteMany({ where: { doctorId: doctor.id } });
     return;
   }
@@ -206,12 +257,10 @@ const setHospital = async (userId, hospitalId) => {
   const hospital = await prisma.hospital.findUnique({ where: { id: hospitalId } });
   if (!hospital) throw createError(404, 'Hospital not found');
 
-  // Remove previous links, then add the new one
   await prisma.hospitalDoctor.deleteMany({ where: { doctorId: doctor.id } });
   await prisma.hospitalDoctor.create({ data: { hospitalId, doctorId: doctor.id } });
 };
 
-/** Get the hospital this doctor currently belongs to */
 const getMyHospital = async (userId) => {
   const doctor = await prisma.doctor.findUnique({ where: { userId } });
   if (!doctor) throw createError(404, 'Doctor profile not found');
@@ -223,8 +272,8 @@ const getMyHospital = async (userId) => {
   return link?.hospital ?? null;
 };
 
-module.exports = { 
-  createProfile, getProfileByUserId, getDoctorById, updateProfile, 
-  getAllDoctors, getDoctorClients, uploadPhoto, deletePhoto, 
-  setHospital, getMyHospital, formatDoctor 
+module.exports = {
+  createProfile, getProfileByUserId, getDoctorById, updateProfile,
+  getAllDoctors, getDoctorClients, uploadPhoto, deletePhoto,
+  setHospital, getMyHospital, formatDoctor,
 };

@@ -14,7 +14,7 @@ import { TimeSlotPicker } from "@/components/doctors/TimeSlotPicker";
 import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, ArrowLeft, CalendarDays, Phone, Star, Award, Wifi } from "lucide-react";
-import { doctorPhotoUrl } from "@/lib/utils";
+import { doctorPhotoUrl, cn } from "@/lib/utils";
 
 import { Link } from "@/navigation";
 import Image from "next/image";
@@ -54,6 +54,7 @@ export default function DoctorProfilePage({ params }: Props) {
   const { slots, isLoading: slotsLoading, fetchSlots } = useSlots(id);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   const handleDateChange = (d: Date | undefined) => {
     setSelectedDate(d);
@@ -63,6 +64,10 @@ export default function DoctorProfilePage({ params }: Props) {
 
   const color = doctor ? (SPEC_COLORS[doctor.specialization] ?? "#6366F1") : "#6366F1";
   const specRu = doctor ? (SPEC_NAMES_RU[doctor.specialization] ?? doctor.specialization) : "";
+  
+  const primaryPhoto = doctor ? doctorPhotoUrl(doctor.user.name, doctor.photoUrl) : "";
+  const fallbackPhoto = doctor ? `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.user.name)}&background=6366F1&color=fff&size=400&bold=true` : "";
+  const photo = imageError ? fallbackPhoto : primaryPhoto;
 
   if (isLoading) {
     return (
@@ -143,11 +148,15 @@ export default function DoctorProfilePage({ params }: Props) {
               />
               <div className="relative p-1.5 rounded-full" style={{ background: `${color}30` }}>
                 <Image
-                  src={doctorPhotoUrl(doctor.user.name, doctor.photoUrl)}
+                  src={photo}
                   alt={doctor.user.name}
                   width={112}
                   height={112}
-                  className="rounded-full ring-4 ring-background"
+                  className={cn(
+                    "rounded-full ring-4 ring-background bg-background object-cover",
+                    imageError ? "p-4" : ""
+                  )}
+                  onError={() => setImageError(true)}
                 />
               </div>
             </div>

@@ -52,7 +52,7 @@ const updateProfile = async (userId, data) => {
 };
 
 const updateAvatar = async (userId, filename) => {
-  const old = await prisma.user.findUnique({ where: { id: userId }, select: { avatar: true } });
+  const old = await prisma.user.findUnique({ where: { id: userId }, select: { avatar: true, role: true } });
 
   if (old?.avatar) {
     const oldPath = path.join(__dirname, '../../uploads/avatars', path.basename(old.avatar));
@@ -60,15 +60,31 @@ const updateAvatar = async (userId, filename) => {
   }
 
   const avatarUrl = `/uploads/avatars/${filename}`;
+
+  // If user is a doctor, also update doctor photoUrl
+  if (old?.role === 'doctor') {
+    await prisma.doctor.update({
+      where: { userId },
+      data: { photoUrl: avatarUrl },
+    }).catch(() => {}); // ignore if doctor record doesn't exist
+  }
+
   return updateProfile(userId, { avatar: avatarUrl });
 };
 
 const deleteAvatar = async (userId) => {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { avatar: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { avatar: true, role: true } });
 
   if (user?.avatar) {
     const filePath = path.join(__dirname, '../../uploads/avatars', path.basename(user.avatar));
     fs.unlink(filePath, () => {});
+  }
+
+  if (user?.role === 'doctor') {
+    await prisma.doctor.update({
+      where: { userId },
+      data: { photoUrl: null },
+    }).catch(() => {});
   }
 
   return updateProfile(userId, { avatar: null });
