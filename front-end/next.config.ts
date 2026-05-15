@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "randomuser.me" },
       { protocol: "http",  hostname: "localhost", port: "5000" },
+      { protocol: "https", hostname: "doctime-backend-jqbp.onrender.com" },
     ],
   },
 };

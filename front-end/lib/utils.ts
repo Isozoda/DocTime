@@ -22,6 +22,8 @@ export function formatTime(dateStr: string): string {
   return formatDate(dateStr, "HH:mm");
 }
 
+export const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ?? "https://doctime-backend-jqbp.onrender.com";
+
 export function avatarUrl(name: string, avatar?: string | null): string {
   if (avatar?.startsWith("/uploads/")) return `${BACKEND_URL}${avatar}`;
   if (avatar) return avatar;
@@ -44,8 +46,6 @@ function stableHash(str: string): number {
   }
   return Math.abs(h);
 }
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ?? "http://localhost:5000";
 
 export function doctorPhotoUrl(name: string, photoUrl?: string | null): string {
   if (photoUrl?.startsWith("/uploads/")) return `${BACKEND_URL}${photoUrl}`;

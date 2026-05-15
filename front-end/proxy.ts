@@ -6,7 +6,7 @@ const intlMiddleware = createMiddleware(routing);
 
 const PROTECTED = ["/dashboard/patient", "/dashboard/doctor"];
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isProtected = PROTECTED.some((p) => pathname.includes(p));

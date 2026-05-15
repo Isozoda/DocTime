@@ -49,10 +49,7 @@ type Tab =
   | "overview" | "appointments" | "schedule" | "clients"
   | "services" | "reviews" | "feedback" | "settings";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ?? "http://localhost:5000";
-
 function resolveDoctorPhoto(name: string, photoUrl?: string | null): string {
-  if (photoUrl && photoUrl.startsWith("/uploads/")) return `${BACKEND}${photoUrl}`;
   return doctorPhotoUrl(name, photoUrl);
 }
 

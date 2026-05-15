@@ -19,17 +19,14 @@ import {
   AlertTriangle, ArrowRight, SearchX,
 } from "lucide-react";
 import api from "@/lib/axios";
+import { avatarUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import type { User } from "@/types/user";
 
 type Tab = "overview" | "appointments" | "history" | "profile";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ?? "http://localhost:5000";
-
 function resolveAvatar(user: { name: string; avatar?: string | null }): string {
-  if (user.avatar) return `${BACKEND}${user.avatar}`;
-  const encoded = encodeURIComponent(user.name);
-  return `https://ui-avatars.com/api/?name=${encoded}&background=0D9488&color=fff&size=128`;
+  return avatarUrl(user.name, user.avatar);
 }
 
 /* ── Welcome banner ────────────────────────────────────────────── */

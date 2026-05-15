@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "@/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://doctime-backend-jqbp.onrender.com/api";
 
 /* ─── Types ─── */
 interface HospSpec { id: string; name: string; slug: string; color: string | null }
@@ -162,9 +162,19 @@ export default function MapPage() {
   /* ── Init Leaflet once ── */
   useEffect(() => {
     if (!mapRef.current || mapInst.current) return;
+
+    // Cancelled flag prevents the async import from racing with cleanup
+    // (React Strict Mode fires effects twice in dev; the first import() resolves
+    // after cleanup has already nulled mapInst, causing a double-init error)
+    let cancelled = false;
+
     import("leaflet").then((L) => {
+      if (cancelled || !mapRef.current || mapInst.current) return;
+      // Belt-and-suspenders: Leaflet marks containers with _leaflet_id
+      if ((mapRef.current as any)._leaflet_id) return;
+
       delete (L.default.Icon.Default.prototype as any)._getIconUrl;
-      const map = L.default.map(mapRef.current!, {
+      const map = L.default.map(mapRef.current, {
         center: [38.86, 69.30],
         zoom: 7,
         zoomControl: false,
@@ -180,10 +190,14 @@ export default function MapPage() {
       mapInst.current = map;
       setMapReady(true);
     });
+
     return () => {
-      mapInst.current?.remove();
-      mapInst.current = null;
-      setMapReady(false);
+      cancelled = true;
+      if (mapInst.current) {
+        mapInst.current.remove();
+        mapInst.current = null;
+        setMapReady(false);
+      }
     };
   }, []);
 

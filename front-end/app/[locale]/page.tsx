@@ -1,12 +1,10 @@
 "use client";
 
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/navigation";
 import { Link } from "@/navigation";
 import { useDoctors } from "@/hooks/useDoctors";
+import { ScrollVideoHero } from "@/components/landing/ScrollVideoHero";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { AIChatWidget } from "@/components/ui/AIChatWidget";
@@ -14,11 +12,10 @@ import { DoctorCard } from "@/components/doctors/DoctorCard";
 import Image from "next/image";
 import {
   Search, Brain, Heart, Baby, Eye, Bone, Activity, Stethoscope,
-  Smile, ArrowRight, CalendarDays, Clock, Droplets, Scan, Ear,
-  CheckCircle, MapPin, Star, Shield, Zap, Users, TrendingUp,
+  Smile, ArrowRight, CalendarDays, Droplets, Scan, Ear,
+  CheckCircle, MapPin, Star, Users,
   Award, HeartPulse, ChevronRight, Sparkles,
 } from "lucide-react";
-import { SPECIALTIES, CITIES } from "@/lib/utils";
 import api from "@/lib/axios";
 import type { Doctor } from "@/types/doctor";
 import image1 from "./image/image.png";
@@ -94,7 +91,7 @@ function AnimatedCounter({ target, suffix, isVisible, delay = 0 }: { target: num
     if (!isVisible || done.current) return;
     done.current = true;
     const t = setTimeout(() => {
-      const dur = 2000;
+      const dur = 1000;
       const start = performance.now();
       const step = (now: number) => {
         const p = Math.min((now - start) / dur, 1);
@@ -363,83 +360,9 @@ function ReviewScrollCard({ review }: { review: DemoReview }) {
   );
 }
 
-/* ══════════════ SCROLL VIDEO SECTION ══════════════ */
-function ScrollVideoSection() {
-  const t = useTranslations("home");
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const rafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    const section = sectionRef.current;
-    if (!video || !section) return;
-
-    const update = () => {
-      rafRef.current = null;
-      const { top, height } = section.getBoundingClientRect();
-      const scrollable = height - window.innerHeight;
-      if (scrollable <= 0) return;
-      const progress = Math.min(1, Math.max(0, -top / scrollable));
-      if (video.duration) {
-        video.currentTime = progress * video.duration;
-      }
-    };
-
-    const onScroll = () => {
-      if (rafRef.current !== null) return;
-      rafRef.current = requestAnimationFrame(update);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  return (
-    <div ref={sectionRef} style={{ height: "250vh" }} className="relative">
-      <div className="sticky top-0 h-screen overflow-hidden">
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
-          muted
-          playsInline
-          preload="auto"
-          src="/video/hero.mp4"
-        />
-        {/* Overlay */}
-        <div className="absolute inset-0" style={{ background: "rgba(5,8,18,0.50)" }} />
-        {/* Text */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none px-4 text-center">
-          <div className="section-badge mb-5">{t("scrollVideoBadge")}</div>
-          <h2
-            className="font-black text-white mb-4"
-            style={{ fontSize: "clamp(2rem, 5vw, 3.75rem)", letterSpacing: "-0.03em", lineHeight: 1.05 }}
-          >
-            {t("scrollVideoTitle")}
-          </h2>
-          <p className="text-white/55 text-base max-w-md">
-            {t("scrollVideoSubtitle")}
-          </p>
-          {/* Scroll indicator */}
-          <div className="absolute bottom-10 flex flex-col items-center gap-2 animate-bounce">
-            <div className="w-px h-12 bg-gradient-to-b from-transparent via-white/40 to-transparent" />
-            <span className="text-xs font-medium tracking-widest uppercase text-white/40">scroll</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ══════════════ MAIN PAGE ══════════════ */
 export default function HomePage() {
   const t = useTranslations();
-  const router = useRouter();
-  const [specialty, setSpecialty] = useState("");
-  const [city, setCity] = useState("");
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const { doctors, isLoading } = useDoctors({ limit: 6 });
   const statsRef = useRef<HTMLDivElement>(null);
@@ -467,13 +390,6 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (specialty) params.set("specialization", specialty);
-    if (city) params.set("city", city);
-    router.push(`/doctors?${params}`);
-  };
-
   const th = useTranslations("home");
 
   const STATS = [
@@ -495,120 +411,8 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      {/* ── HERO ── */}
-      <section
-        className="relative min-h-[calc(100vh-64px)] flex items-center overflow-hidden hero-bg"
-      >
-        {/* Background video */}
-        <video
-          className="absolute inset-0 w-full h-full object-cover z-0"
-          autoPlay
-          muted
-          loop
-          playsInline
-          src="/video/hero.mp4"
-          style={{ willChange: "transform" }}
-        />
-        {/* Dark overlay */}
-        <div className="absolute inset-0 z-[1]" style={{ background: "rgba(5,8,18,0.55)" }} />
-
-        {/* Grid overlay */}
-        <div className="absolute inset-0 pointer-events-none grid-overlay opacity-30 dark:opacity-100 z-[2]" />
-        {/* Orbs */}
-        <div className="absolute top-1/4 -left-40 w-96 h-96 rounded-full pointer-events-none z-[2]" style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--primary), transparent 86%) 0%, transparent 70%)", filter: "blur(60px)" }} />
-        <div className="absolute bottom-1/4 -right-40 w-80 h-80 rounded-full pointer-events-none z-[2]" style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--secondary), transparent 90%) 0%, transparent 70%)", filter: "blur(60px)" }} />
-        {/* Particles */}
-        {[...Array(20)].map((_, i) => <div key={i} className="particle z-[2]" />)}
-
-        <div className="container mx-auto px-4 py-20 w-full relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-50 items-center max-w-6xl mx-auto">
-
-            {/* Left content */}
-            <div className="animate-fade-in-up">
-              {/* Eyebrow badge */}
-              <div className="section-badge mb-6">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse-glow" />
-                {th("heroBadge")}
-              </div>
-
-              {/* H1 */}
-              <h1 className="font-black leading-[1.02] tracking-tight text-foreground mb-6" style={{ fontSize: "clamp(2.5rem, 6.5vw, 4.5rem)", letterSpacing: "-0.04em" }}>
-                Book the best<br />
-                <span className="gradient-text-indigo">doctors</span> in<br />
-                minutes
-              </h1>
-
-              <p className="text-lg leading-relaxed mb-8 max-w-lg text-muted-foreground">
-                {th("heroSubtitle")}
-              </p>
-
-
-              {/* Search bar */}
-              <div
-                className="flex flex-col w-170 sm:flex-row gap-2.5 p-2.5 rounded-3xl mb-8 bg-card/80 border border-border/50 backdrop-blur-3xl shadow-2xl shadow-primary/5"
-              >
-                <select
-                  value={specialty}
-                  onChange={(e) => setSpecialty(e.target.value)}
-                  className="flex-1 px-3 py-2.5 text-sm rounded-xl outline-none bg-background border border-border text-foreground"
-                >
-                  <option value="">🔍 {t("search.specialty")}</option>
-                  {SPECIALTIES.map((s) => <option key={s} value={s} className="bg-background">{s}</option>)}
-                </select>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="flex-1 px-3 py-2.5 text-sm rounded-xl outline-none bg-background border border-border text-foreground"
-                >
-                  <option value="">📍 {t("search.city")}</option>
-                  {CITIES.map((c) => <option key={c} value={c} className="bg-background">{c}</option>)}
-                </select>
-                <button
-                  onClick={handleSearch}
-                  className="btn-primary px-6 py-2.5 text-sm whitespace-nowrap"
-                  style={{ borderRadius: "12px" }}
-                >
-                  <Search className="h-4 w-4" />
-                  {t("search.button")}
-                </button>
-              </div>
-
-              {/* CTAs */}
-              <div className="flex flex-wrap gap-3 mb-8">
-                <Link href="/doctors" className="btn-primary">
-                  <Stethoscope className="h-4 w-4" />
-                  {th("heroCtaPrimary")}
-                </Link>
-                <Link href="/map" className="btn-glass">
-                  <MapPin className="h-4 w-4" />
-                  {th("heroCtaSecondary")}
-                </Link>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-4">
-                {[
-                  { icon: Shield, label: th("trustVerified") },
-                  { icon: CheckCircle, label: th("trustLicensed") },
-                  { icon: Zap, label: th("trustInstant") },
-                ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Icon className="h-4 w-4 text-emerald-500" />
-                    {label}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right — hero card */}
-            <div className="hidden lg:flex justify-center items-center animate-fade-in-up delay-200">
-              <HeroAppointmentCard />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SCROLL VIDEO SECTION ── */}
-      <ScrollVideoSection />
+      {/* ── SCROLL VIDEO HERO ── */}
+      <ScrollVideoHero />
 
       {/* ── DOCTORS SCROLL STRIP ── */}
       <section className="py-20 bg-muted/20 border-y border-border/50 relative">
